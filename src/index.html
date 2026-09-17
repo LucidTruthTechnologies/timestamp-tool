@@ -12,6 +12,14 @@
 <div class="wrap">
 
 <header>
+  <!-- Both marks are embedded as data: URIs by build.sh, never fetched. A remote <img>
+       would make the page request a third-party resource on load, which is exactly what
+       the external-resource check in build.sh refuses. The link is a navigation the
+       visitor chooses, not a resource the page loads, so it costs nothing. -->
+  <a class="brand" href="https://lucidtruthtechnologies.com/">
+    <img class="brand-light" src="__LOGO_LIGHT__" alt="Lucid Truth Technologies" width="1024" height="182">
+    <img class="brand-dark" src="__LOGO_DARK__" alt="Lucid Truth Technologies" width="1024" height="182">
+  </a>
   <h1>Timestamp a document</h1>
   <p class="tagline">Get independent, third-party proof that your document existed no later than
   right now. Your file never leaves this computer.</p>
@@ -196,6 +204,17 @@
   formal validation. That does not weaken what it produces: the evidence in your archive is a set
   of tokens signed by independent third parties, checkable with standard software using the
   commands included in the archive. Verify the tokens, not the tool.</p>
+  <p><strong>No warranty, and no liability.</strong> This tool is provided as is, without
+  warranty of any kind, express or implied. Lucid Truth Technologies, a registered trademark of
+  Kenneth G. Hartman Consulting Services LLC, accepts no liability for any use of, or any
+  reliance on, this tool or anything it produces. Using it creates no professional, examiner or
+  client relationship, and nothing it produces is legal advice. Whether the evidence supports
+  any particular conclusion is a judgment for you and your advisors, not for this tool. The
+  complete terms are in the MIT license, which is included in every archive this tool
+  produces as <code>LICENSE.txt</code>.</p>
+  <p>That disclaims the tool, not the timestamps. The tokens in your archive are signed by the
+  timestamp authorities themselves, and those signatures can be checked with standard software
+  independently of this tool, its author, and this disclaimer.</p>
   <p>Everything happens in your browser. There is no account, no upload, and no record kept of
   your document or its fingerprint by this page.</p>
   <p>Version <span id="tool-version"></span> &middot;

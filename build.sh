@@ -137,12 +137,31 @@ NSPY
 sed -i "s|__VERSION__|${VERSION}|g; s|__RELAY_URL__|${RELAY_URL}|g" "$TMP/bundle.js"
 
 # ---- assemble --------------------------------------------------------------
-python3 - "$SRC/index.html" "$SRC/styles.css" "$TMP/bundle.js" "$OUT/index.html" <<'PY'
+python3 - "$SRC/index.html" "$SRC/styles.css" "$TMP/bundle.js" "$OUT/index.html" LICENSE assets <<'PY'
+import base64
+import json
 import sys
-html_path, css_path, js_path, out_path = sys.argv[1:5]
+html_path, css_path, js_path, out_path, license_path, assets_dir = sys.argv[1:7]
 html = open(html_path, encoding='utf-8').read()
 css  = open(css_path,  encoding='utf-8').read()
 js   = open(js_path,   encoding='utf-8').read()
+
+# The license text ships inside every evidence archive the tool produces. It is read
+# from the repository's own LICENSE here, rather than pasted into a JS string, so the
+# copy in the archive cannot drift from the copy in the repo. One file, one license.
+license_text = open(license_path, encoding='utf-8').read()
+js = js.replace('__LICENSE_TEXT__', json.dumps(license_text)[1:-1])
+
+# Logos are embedded as data: URIs, never linked. A remote <img> would make the page
+# fetch a third-party resource on load and would be refused by the external-resource
+# check below, which is the whole point of that check.
+for marker, filename, mime in (
+    ('__LOGO_LIGHT__', 'ltt-logo-light.png', 'image/png'),
+    ('__LOGO_DARK__',  'ltt-logo-dark.png',  'image/png'),
+):
+    with open(f'{assets_dir}/{filename}', 'rb') as fh:
+        b64 = base64.b64encode(fh.read()).decode('ascii')
+    html = html.replace(marker, f'data:{mime};base64,{b64}')
 
 # A literal </script> inside the bundle would terminate the script element early.
 # Nothing in src/ contains one today; splitting the token keeps that true if it ever
@@ -180,8 +199,16 @@ note() { echo "       CHECK FAIL: $*" >&2; fail=1; }
 grep -qiE '<script[^>]+src=|<link[^>]+href="https?:|@import[[:space:]]+url\(' "$OUT/index.html" \
   && note "the page references an external resource; it must be self-contained"
 
-grep -qE '__VERSION__|__RELAY_URL__' "$OUT/index.html" \
+grep -qE '__VERSION__|__RELAY_URL__|__LICENSE_TEXT__|__LOGO_LIGHT__|__LOGO_DARK__' "$OUT/index.html" \
   && note "a build placeholder was left unsubstituted"
+
+# The archive's whole point is that it travels with its terms. A build that lost the
+# license text would produce archives missing a file the report tells the reader to read.
+grep -q 'MIT License' "$OUT/index.html" \
+  || note "the MIT license text is not present in the bundle"
+
+grep -q 'data:image/png;base64,' "$OUT/index.html" \
+  || note "the logo was not embedded"
 
 grep -q 'INLINE:' "$OUT/index.html" \
   && note "an inline marker survived into the output"

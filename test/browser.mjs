@@ -123,10 +123,72 @@ ok('title is set', title === 'Timestamp a Document', `got "${title}"`);
 const version = await evaluate(sessionId, 'document.getElementById("tool-version").textContent');
 ok('version was substituted at build time', /^\d+\.\d+\.\d+$/.test(version), `got "${version}"`);
 
-ok('no external resource is referenced',
+/* The FILE must reference nothing external. A HOST may still inject something as it
+ * serves the page, and the canonical deployment's host does (Cloudflare Web Analytics,
+ * enabled zone-wide; see "What the host adds" in README.md). Failing on that would make
+ * this guard cry wolf on every hosted run and it would stop being read, so host
+ * injections are reported separately and by name. Anything NOT on that list still fails,
+ * which is what the guard is for. test/external-resources.mjs is the unconditional
+ * census of what a browser actually requests. */
+const HOST_INJECTED = [/^https:\/\/static\.cloudflareinsights\.com\//, /\/cdn-cgi\//];
+const externalRefs = await evaluate(sessionId, `
+  JSON.stringify([...document.querySelectorAll('script[src],link[href],img[src]')]
+    .map(e => e.getAttribute('src') || e.getAttribute('href') || '')
+    .filter(u => /^https?:/.test(u)))`);
+const refs = JSON.parse(externalRefs);
+const injected = refs.filter((u) => HOST_INJECTED.some((re) => re.test(u)));
+const unexpected = refs.filter((u) => !HOST_INJECTED.some((re) => re.test(u)));
+
+ok('the file itself references no external resource', unexpected.length === 0,
+  unexpected.join('\n        '));
+if (injected.length) {
+  console.log(`  NOTE  ${injected.length} host-injected resource(s), documented in README:`);
+  for (const u of injected) console.log(`        ${u.slice(0, 100)}`);
+}
+
+/* ---- brand mark: embedded, and exactly one visible per theme ----
+ * The two marks are different artwork, shown by CSS. `.brand img` is specificity (0,1,1)
+ * and a bare `.brand-dark` is (0,1,0), so the obvious stylesheet renders BOTH, stacked.
+ * That is invisible in the CSS and obvious in getComputedStyle, so it is checked here. */
+console.log('\nBrand mark');
+const brandInfo = async () => JSON.parse(await evaluate(sessionId,
+  `JSON.stringify([...document.querySelectorAll('.brand img')].map(i => ({
+     cls: i.className, natural: i.naturalWidth + 'x' + i.naturalHeight,
+     complete: i.complete, shown: getComputedStyle(i).display })))`));
+
+ok('both marks are embedded, not linked',
+  await evaluate(sessionId,
+    `[...document.querySelectorAll('.brand img')].every(i => i.src.startsWith('data:image/'))`));
+
+{
+  const marks = await brandInfo();
+  ok('both marks decoded', marks.length === 2 && marks.every((m) => m.complete && m.natural !== '0x0'),
+    JSON.stringify(marks));
+  const visible = marks.filter((m) => m.shown !== 'none');
+  ok('exactly one mark is visible in light mode', visible.length === 1,
+    `visible: ${visible.map((m) => m.cls).join(', ') || 'none'}`);
+  ok('the light mark is the visible one', visible[0]?.cls === 'brand-light', JSON.stringify(marks));
+}
+
+await send('Emulation.setEmulatedMedia',
+  { features: [{ name: 'prefers-color-scheme', value: 'dark' }] }, sessionId);
+await sleep(250);
+{
+  const marks = await brandInfo();
+  const visible = marks.filter((m) => m.shown !== 'none');
+  ok('exactly one mark is visible in dark mode', visible.length === 1,
+    `visible: ${visible.map((m) => m.cls).join(', ') || 'none'}`);
+  ok('the dark mark is the visible one', visible[0]?.cls === 'brand-dark', JSON.stringify(marks));
+}
+await send('Emulation.setEmulatedMedia', { features: [] }, sessionId);
+
+/* ---- the liability statement must sit beside the not-validated statement ---- */
+ok('page carries the liability disclaimer',
+  await evaluate(sessionId, `document.body.innerText.includes('accepts no liability for any use of')`));
+ok('disclaimer names the legal entity, not an LLC-suffixed brand',
   await evaluate(sessionId, `
-    [...document.querySelectorAll('script[src],link[href],img[src]')]
-      .filter(e => /^https?:/.test(e.getAttribute('src') || e.getAttribute('href') || '')).length === 0`));
+    document.body.innerText.includes('Kenneth G. Hartman Consulting Services LLC')
+    && !/Lucid Truth Technologies,? LLC/.test(document.body.innerText)`));
 
 /* ---- drive a real file through the hashing path ---- */
 console.log(`\nHashing ${FILE} through the page`);

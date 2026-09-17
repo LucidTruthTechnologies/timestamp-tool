@@ -155,6 +155,18 @@ That does not weaken what it produces: the evidence is a set of tokens signed by
 third parties, checkable with standard software using commands included in every archive.
 Verify the tokens, not the tool.
 
+**No warranty, and no liability.** This tool is provided as is, without warranty of any kind,
+express or implied. Lucid Truth Technologies, a registered trademark of Kenneth G. Hartman
+Consulting Services LLC, accepts no liability for any use of, or any reliance on, this tool or
+anything it produces. Using it creates no professional, examiner or client relationship, and
+nothing it produces is legal advice. Whether the evidence in an archive supports any particular
+conclusion is a judgment for its holder and their advisors to make, not for this tool.
+
+That disclaims the tool, not the timestamps. The tokens are signed by the timestamp authorities
+themselves and their signatures hold independently of this tool, its author, and this
+disclaimer. The complete terms are in [LICENSE](LICENSE), and a copy travels inside every
+archive the tool produces as `LICENSE.txt`.
+
 ## Build
 
 ```sh

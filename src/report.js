@@ -32,6 +32,53 @@ import { PASS, FAIL, NOT_PERFORMED } from './verify.js';
 
 export const TOOL_NAME = 'LTT Timestamp Tool';
 
+/* The repository's LICENSE, substituted by build.sh so the copy that ships inside every
+ * evidence archive cannot drift from the copy in the repo. In an unbuilt source tree this
+ * is still the literal placeholder; packageLicenseText() below says so rather than writing
+ * a confusing token into an archive. */
+export const LICENSE_TEXT = "__LICENSE_TEXT__";
+
+export function packageLicenseText() {
+  if (LICENSE_TEXT.startsWith('__LICENSE')) {
+    return 'The license text was not substituted at build time.\n\n' +
+      'This archive was produced from an unbuilt source tree. The canonical terms are the\n' +
+      'MIT License at https://github.com/LucidTruthTechnologies/timestamp-tool/blob/master/LICENSE\n';
+  }
+  return LICENSE_TEXT;
+}
+
+/* The liability statement, kept beside the not-validated statement everywhere it appears.
+ *
+ * Two things this wording is careful about, and the reason it is a constant rather than
+ * prose typed three times:
+ *
+ * 1. THE ENTITY. "Lucid Truth Technologies" is a DBA brand and never carries an entity
+ *    suffix. The legal entity is Kenneth G. Hartman Consulting Services LLC. The
+ *    construction below is taken verbatim from the firm's own site footer rather than
+ *    invented, because a disclaimer naming a party that does not exist is worse than none.
+ *
+ * 2. IT DISCLAIMS THE TOOL, NOT THE TIMESTAMPS. A liability clause that reads as "this
+ *    evidence is unreliable" would defeat the package it travels in. The tokens are signed
+ *    by third parties whose signatures hold whatever anyone says here, so the last
+ *    paragraph draws that line explicitly.
+ */
+export const LIABILITY_PARAGRAPHS = [
+  'This tool is provided as is, without warranty of any kind, express or implied. ' +
+  'Lucid Truth Technologies, a registered trademark of Kenneth G. Hartman Consulting ' +
+  'Services LLC, accepts no liability for any use of, or any reliance on, this tool or ' +
+  'anything it produces.',
+
+  'Using it creates no professional, examiner or client relationship, and nothing it ' +
+  'produces is legal advice. Whether the evidence in this package supports any particular ' +
+  'conclusion is a judgment for you and your advisors to make, not for this tool.',
+
+  'This disclaims the TOOL, not the timestamps. The tokens in this package were signed by ' +
+  'the timestamp authorities named in it, and those signatures can be checked with standard ' +
+  'software using the commands in this document, independently of this tool, its author, ' +
+  'and this disclaimer.',
+];
+
+
 const RESULT_WORD = {
   [PASS]: 'PASS',
   [FAIL]: 'FAIL',
@@ -409,6 +456,11 @@ export function buildReport(ctx) {
   p(`collect those tokens and keep them together with the document. Verify the tokens,`);
   p(`not the tool.`);
   p();
+  p(`### No warranty, and no liability`);
+  p();
+  for (const para of LIABILITY_PARAGRAPHS) { p(para); p(); }
+  p(`The complete terms are in \`LICENSE.txt\`, included in this package.`);
+  p();
   p(`Source code: https://github.com/LucidTruthTechnologies/timestamp-tool`);
   p();
 
@@ -497,10 +549,27 @@ ${'-'.repeat(52)}
   REPORT.md / REPORT.html   The full record, including commands anyone can
                             run to check all of this independently.
   MANIFEST.txt              Every file in this archive and its fingerprint.
+  LICENSE.txt               The terms this tool is provided under.
   ${ctx.mode === 'hash-only' ? 'request/' : 'document/'}                 ${ctx.mode === 'hash-only' ? 'The request that was sent.' : 'Your original document, unchanged.'}
   authorities/              What each authority sent back, with certificates.
   *.asics                   Standard-format containers (ETSI EN 319 162)
                             that third-party validators can read.
+
+
+NO WARRANTY, AND NO LIABILITY
+${'-'.repeat(52)}
+
+This tool is provided as is, with no warranty of any kind. Lucid Truth
+Technologies, a registered trademark of Kenneth G. Hartman Consulting Services
+LLC, accepts no liability for any use of, or any reliance on, this tool or
+anything it produces. Using it creates no professional or client relationship,
+and nothing here is legal advice.
+
+That disclaims the TOOL, not the timestamps. The tokens in this archive were
+signed by the timestamp authorities, and those signatures hold independently of
+this tool and of anything said here.
+
+The full terms are in LICENSE.txt.
 
 
 IF SOMEONE CHALLENGES THIS

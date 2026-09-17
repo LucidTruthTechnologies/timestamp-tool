@@ -67,6 +67,26 @@ body {
 .wrap { max-width: 44rem; margin: 0 auto; }
 
 header { padding: 2.5rem 0 1rem; }
+
+/* Brand mark. Two images rather than one plus a filter, because the colored and white
+   marks are different artwork, not the same artwork recolored. Only one is ever shown;
+   both are already in the page, so switching theme costs no request. */
+.brand { display: inline-block; margin: 0 0 1.4rem; }
+.brand img { width: auto; height: 34px; max-width: 100%; }
+
+/* Every rule below qualifies the class with `img` on purpose. `.brand img` is
+   specificity (0,1,1) and a bare `.brand-dark` is (0,1,0), so a bare class rule loses
+   and BOTH marks render, stacked. Caught by reading getComputedStyle in a real browser
+   rather than by looking at the stylesheet, where it is invisible. */
+.brand img.brand-light { display: block; }
+.brand img.brand-dark { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand img.brand-light { display: none; }
+  :root:not([data-theme="light"]) .brand img.brand-dark { display: block; }
+}
+:root[data-theme="dark"] .brand img.brand-light { display: none; }
+:root[data-theme="dark"] .brand img.brand-dark { display: block; }
 h1 { font-size: 1.5rem; margin: 0 0 .4rem; line-height: 1.2; }
 .tagline { color: var(--quiet); margin: 0; font-size: 1rem; }
 
@@ -185,6 +205,14 @@ footer p { margin: .4rem 0; }
 <div class="wrap">
 
 <header>
+  <!-- Both marks are embedded as data: URIs by build.sh, never fetched. A remote <img>
+       would make the page request a third-party resource on load, which is exactly what
+       the external-resource check in build.sh refuses. The link is a navigation the
+       visitor chooses, not a resource the page loads, so it costs nothing. -->
+  <a class="brand" href="https://lucidtruthtechnologies.com/">
+    <img class="brand-light" src="data:image/png;base64,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" alt="Lucid Truth Technologies" width="1024" height="182">
+    <img class="brand-dark" src="data:image/png;base64,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" alt="Lucid Truth Technologies" width="1024" height="182">
+  </a>
   <h1>Timestamp a document</h1>
   <p class="tagline">Get independent, third-party proof that your document existed no later than
   right now. Your file never leaves this computer.</p>
@@ -369,6 +397,17 @@ footer p { margin: .4rem 0; }
   formal validation. That does not weaken what it produces: the evidence in your archive is a set
   of tokens signed by independent third parties, checkable with standard software using the
   commands included in the archive. Verify the tokens, not the tool.</p>
+  <p><strong>No warranty, and no liability.</strong> This tool is provided as is, without
+  warranty of any kind, express or implied. Lucid Truth Technologies, a registered trademark of
+  Kenneth G. Hartman Consulting Services LLC, accepts no liability for any use of, or any
+  reliance on, this tool or anything it produces. Using it creates no professional, examiner or
+  client relationship, and nothing it produces is legal advice. Whether the evidence supports
+  any particular conclusion is a judgment for you and your advisors, not for this tool. The
+  complete terms are in the MIT license, which is included in every archive this tool
+  produces as <code>LICENSE.txt</code>.</p>
+  <p>That disclaims the tool, not the timestamps. The tokens in your archive are signed by the
+  timestamp authorities themselves, and those signatures can be checked with standard software
+  independently of this tool, its author, and this disclaimer.</p>
   <p>Everything happens in your browser. There is no account, no upload, and no record kept of
   your document or its fingerprint by this page.</p>
   <p>Version <span id="tool-version"></span> &middot;
@@ -1937,6 +1976,53 @@ async function checkAsicStructure(blob) {
 
 const TOOL_NAME = 'LTT Timestamp Tool';
 
+/* The repository's LICENSE, substituted by build.sh so the copy that ships inside every
+ * evidence archive cannot drift from the copy in the repo. In an unbuilt source tree this
+ * is still the literal placeholder; packageLicenseText() below says so rather than writing
+ * a confusing token into an archive. */
+const LICENSE_TEXT = "MIT License\n\nCopyright (c) 2026 Lucid Truth Technologies\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n";
+
+function packageLicenseText() {
+  if (LICENSE_TEXT.startsWith('__LICENSE')) {
+    return 'The license text was not substituted at build time.\n\n' +
+      'This archive was produced from an unbuilt source tree. The canonical terms are the\n' +
+      'MIT License at https://github.com/LucidTruthTechnologies/timestamp-tool/blob/master/LICENSE\n';
+  }
+  return LICENSE_TEXT;
+}
+
+/* The liability statement, kept beside the not-validated statement everywhere it appears.
+ *
+ * Two things this wording is careful about, and the reason it is a constant rather than
+ * prose typed three times:
+ *
+ * 1. THE ENTITY. "Lucid Truth Technologies" is a DBA brand and never carries an entity
+ *    suffix. The legal entity is Kenneth G. Hartman Consulting Services LLC. The
+ *    construction below is taken verbatim from the firm's own site footer rather than
+ *    invented, because a disclaimer naming a party that does not exist is worse than none.
+ *
+ * 2. IT DISCLAIMS THE TOOL, NOT THE TIMESTAMPS. A liability clause that reads as "this
+ *    evidence is unreliable" would defeat the package it travels in. The tokens are signed
+ *    by third parties whose signatures hold whatever anyone says here, so the last
+ *    paragraph draws that line explicitly.
+ */
+const LIABILITY_PARAGRAPHS = [
+  'This tool is provided as is, without warranty of any kind, express or implied. ' +
+  'Lucid Truth Technologies, a registered trademark of Kenneth G. Hartman Consulting ' +
+  'Services LLC, accepts no liability for any use of, or any reliance on, this tool or ' +
+  'anything it produces.',
+
+  'Using it creates no professional, examiner or client relationship, and nothing it ' +
+  'produces is legal advice. Whether the evidence in this package supports any particular ' +
+  'conclusion is a judgment for you and your advisors to make, not for this tool.',
+
+  'This disclaims the TOOL, not the timestamps. The tokens in this package were signed by ' +
+  'the timestamp authorities named in it, and those signatures can be checked with standard ' +
+  'software using the commands in this document, independently of this tool, its author, ' +
+  'and this disclaimer.',
+];
+
+
 const RESULT_WORD = {
   [PASS]: 'PASS',
   [FAIL]: 'FAIL',
@@ -2314,6 +2400,11 @@ function buildReport(ctx) {
   p(`collect those tokens and keep them together with the document. Verify the tokens,`);
   p(`not the tool.`);
   p();
+  p(`### No warranty, and no liability`);
+  p();
+  for (const para of LIABILITY_PARAGRAPHS) { p(para); p(); }
+  p(`The complete terms are in \`LICENSE.txt\`, included in this package.`);
+  p();
   p(`Source code: https://github.com/LucidTruthTechnologies/timestamp-tool`);
   p();
 
@@ -2402,10 +2493,27 @@ ${'-'.repeat(52)}
   REPORT.md / REPORT.html   The full record, including commands anyone can
                             run to check all of this independently.
   MANIFEST.txt              Every file in this archive and its fingerprint.
+  LICENSE.txt               The terms this tool is provided under.
   ${ctx.mode === 'hash-only' ? 'request/' : 'document/'}                 ${ctx.mode === 'hash-only' ? 'The request that was sent.' : 'Your original document, unchanged.'}
   authorities/              What each authority sent back, with certificates.
   *.asics                   Standard-format containers (ETSI EN 319 162)
                             that third-party validators can read.
+
+
+NO WARRANTY, AND NO LIABILITY
+${'-'.repeat(52)}
+
+This tool is provided as is, with no warranty of any kind. Lucid Truth
+Technologies, a registered trademark of Kenneth G. Hartman Consulting Services
+LLC, accepts no liability for any use of, or any reliance on, this tool or
+anything it produces. Using it creates no professional or client relationship,
+and nothing here is legal advice.
+
+That disclaims the TOOL, not the timestamps. The tokens in this archive were
+signed by the timestamp authorities, and those signatures hold independently of
+this tool and of anything said here.
+
+The full terms are in LICENSE.txt.
 
 
 IF SOMEONE CHALLENGES THIS
@@ -2662,6 +2770,10 @@ async function buildPackage(ctx) {
     addFile(`document/${sanitize(ctx.document.name)}`, ctx.documentBlob);
   }
   addFile('request/request.tsq', ctx.requestBytes);
+
+  /* The terms travel with the archive. An archive whose report points at LICENSE.txt and
+   * does not contain one is a broken reference in a document meant to outlive its author. */
+  addFile('LICENSE.txt', packageLicenseText());
 
   for (const r of ctx.results) {
     const base = `authorities/${r.id}`;

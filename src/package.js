@@ -17,7 +17,7 @@
  */
 
 import { ZipWriter, buildAsicS, checkAsicStructure } from './zip.js';
-import { buildReport, buildReadme, buildManifest, reportToHtml } from './report.js';
+import { buildReport, buildReadme, buildManifest, reportToHtml, packageLicenseText } from './report.js';
 import { toHex } from './sha256.js';
 import * as tsp from './tsp.js';
 
@@ -47,6 +47,10 @@ export async function buildPackage(ctx) {
     addFile(`document/${sanitize(ctx.document.name)}`, ctx.documentBlob);
   }
   addFile('request/request.tsq', ctx.requestBytes);
+
+  /* The terms travel with the archive. An archive whose report points at LICENSE.txt and
+   * does not contain one is a broken reference in a document meant to outlive its author. */
+  addFile('LICENSE.txt', packageLicenseText());
 
   for (const r of ctx.results) {
     const base = `authorities/${r.id}`;

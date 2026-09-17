@@ -59,6 +59,26 @@ body {
 .wrap { max-width: 44rem; margin: 0 auto; }
 
 header { padding: 2.5rem 0 1rem; }
+
+/* Brand mark. Two images rather than one plus a filter, because the colored and white
+   marks are different artwork, not the same artwork recolored. Only one is ever shown;
+   both are already in the page, so switching theme costs no request. */
+.brand { display: inline-block; margin: 0 0 1.4rem; }
+.brand img { width: auto; height: 34px; max-width: 100%; }
+
+/* Every rule below qualifies the class with `img` on purpose. `.brand img` is
+   specificity (0,1,1) and a bare `.brand-dark` is (0,1,0), so a bare class rule loses
+   and BOTH marks render, stacked. Caught by reading getComputedStyle in a real browser
+   rather than by looking at the stylesheet, where it is invisible. */
+.brand img.brand-light { display: block; }
+.brand img.brand-dark { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand img.brand-light { display: none; }
+  :root:not([data-theme="light"]) .brand img.brand-dark { display: block; }
+}
+:root[data-theme="dark"] .brand img.brand-light { display: none; }
+:root[data-theme="dark"] .brand img.brand-dark { display: block; }
 h1 { font-size: 1.5rem; margin: 0 0 .4rem; line-height: 1.2; }
 .tagline { color: var(--quiet); margin: 0; font-size: 1rem; }
 
