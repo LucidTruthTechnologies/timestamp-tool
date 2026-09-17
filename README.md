@@ -156,8 +156,8 @@ third parties, checkable with standard software using commands included in every
 Verify the tokens, not the tool.
 
 **No warranty, and no liability.** This tool is provided as is, without warranty of any kind,
-express or implied. Lucid Truth Technologies, a registered trademark of Kenneth G. Hartman
-Consulting Services LLC, accepts no liability for any use of, or any reliance on, this tool or
+express or implied. Kenneth G. Hartman Consulting Services LLC dba Lucid Truth
+Technologies(TM), accepts no liability for any use of, or any reliance on, this tool or
 anything it produces. Using it creates no professional, examiner or client relationship, and
 nothing it produces is legal advice. Whether the evidence in an archive supports any particular
 conclusion is a judgment for its holder and their advisors to make, not for this tool.

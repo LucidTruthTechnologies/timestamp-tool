@@ -52,10 +52,14 @@ export function packageLicenseText() {
  * Two things this wording is careful about, and the reason it is a constant rather than
  * prose typed three times:
  *
- * 1. THE ENTITY. "Lucid Truth Technologies" is a DBA brand and never carries an entity
- *    suffix. The legal entity is Kenneth G. Hartman Consulting Services LLC. The
- *    construction below is taken verbatim from the firm's own site footer rather than
- *    invented, because a disclaimer naming a party that does not exist is worse than none.
+ * 1. THE ENTITY, which is the highest-consequence detail here. The legal entity is
+ *    Kenneth G. Hartman Consulting Services LLC; "Lucid Truth Technologies" is a DBA
+ *    brand that must NEVER carry an entity suffix of its own. The form below names the
+ *    entity first and the brand second (Ken's wording, 2026-09-17), which is the right
+ *    order for a liability clause: the party that would actually be sued is the LLC, and
+ *    a disclaimer naming a party that does not exist is worse than no disclaimer.
+ *    Do not "simplify" this to the brand alone, and do not write "Lucid Truth
+ *    Technologies, LLC", which names nothing.
  *
  * 2. IT DISCLAIMS THE TOOL, NOT THE TIMESTAMPS. A liability clause that reads as "this
  *    evidence is unreliable" would defeat the package it travels in. The tokens are signed
@@ -64,8 +68,8 @@ export function packageLicenseText() {
  */
 export const LIABILITY_PARAGRAPHS = [
   'This tool is provided as is, without warranty of any kind, express or implied. ' +
-  'Lucid Truth Technologies, a registered trademark of Kenneth G. Hartman Consulting ' +
-  'Services LLC, accepts no liability for any use of, or any reliance on, this tool or ' +
+  'Kenneth G. Hartman Consulting Services LLC dba Lucid Truth Technologies(TM), ' +
+  'accepts no liability for any use of, or any reliance on, this tool or ' +
   'anything it produces.',
 
   'Using it creates no professional, examiner or client relationship, and nothing it ' +
@@ -559,11 +563,11 @@ ${'-'.repeat(52)}
 NO WARRANTY, AND NO LIABILITY
 ${'-'.repeat(52)}
 
-This tool is provided as is, with no warranty of any kind. Lucid Truth
-Technologies, a registered trademark of Kenneth G. Hartman Consulting Services
-LLC, accepts no liability for any use of, or any reliance on, this tool or
-anything it produces. Using it creates no professional or client relationship,
-and nothing here is legal advice.
+This tool is provided as is, with no warranty of any kind. Kenneth G.
+Hartman Consulting Services LLC dba Lucid Truth Technologies(TM), accepts no
+liability for any use of, or any reliance on, this tool or anything it
+produces. Using it creates no professional or client relationship, and
+nothing here is legal advice.
 
 That disclaims the TOOL, not the timestamps. The tokens in this archive were
 signed by the timestamp authorities, and those signatures hold independently of

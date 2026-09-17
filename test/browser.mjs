@@ -185,10 +185,17 @@ await send('Emulation.setEmulatedMedia', { features: [] }, sessionId);
 /* ---- the liability statement must sit beside the not-validated statement ---- */
 ok('page carries the liability disclaimer',
   await evaluate(sessionId, `document.body.innerText.includes('accepts no liability for any use of')`));
-ok('disclaimer names the legal entity, not an LLC-suffixed brand',
+/* The entity is asserted positively AND negatively. The positive half catches a
+ * well-meaning edit that shortens the clause to the brand, which would name no legal
+ * person at all; the negative half catches "Lucid Truth Technologies, LLC", which names
+ * a company that does not exist. */
+ok('disclaimer names the legal entity first, then the DBA',
   await evaluate(sessionId, `
-    document.body.innerText.includes('Kenneth G. Hartman Consulting Services LLC')
-    && !/Lucid Truth Technologies,? LLC/.test(document.body.innerText)`));
+    /Kenneth G\\. Hartman Consulting Services LLC dba Lucid Truth Technologies/
+      .test(document.body.innerText)`));
+ok('brand never carries an entity suffix of its own',
+  await evaluate(sessionId,
+    `!/Lucid Truth Technologies,?\\s+(LLC|Inc|Ltd)/.test(document.body.innerText)`));
 
 /* ---- drive a real file through the hashing path ---- */
 console.log(`\nHashing ${FILE} through the page`);
