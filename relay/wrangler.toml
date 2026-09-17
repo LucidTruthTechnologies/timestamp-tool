@@ -2,15 +2,58 @@ name = "timestamp-relay"
 main = "src/index.ts"
 compatibility_date = "2026-01-01"
 
-# The relay keeps exactly one piece of state: a count of requests relayed.
-# Create it with:  wrangler kv namespace create COUNTER
-# then paste the returned id below. The relay runs without it; the counter is
-# simply unavailable and /count reports zero.
-# [[kv_namespaces]]
-# binding = "COUNTER"
-# id = "PUT_YOUR_KV_NAMESPACE_ID_HERE"
+# ---------------------------------------------------------------------------
+# SELF-HOSTERS: change these three things and nothing else.
+#
+#   1. account_id       your own Cloudflare account id
+#   2. routes           your own hostname, or delete the block entirely to
+#                       deploy to <name>.<your-subdomain>.workers.dev
+#   3. kv_namespaces.id your own, from: wrangler kv namespace create COUNTER
+#
+# Neither an account id nor a KV namespace id is a credential. They identify
+# resources; they do not grant access to them. The API token is the credential
+# and it is never in this repository.
+#
+# TOML ORDERING IS LOAD-BEARING HERE. Every top-level key (account_id, routes)
+# must appear BEFORE the first [table] header. Put `routes` after
+# [[kv_namespaces]] and TOML reads it as a field OF that table: wrangler warns
+# "Unexpected fields found in kv_namespaces[0] field: routes" in its last line
+# of output, deploys successfully, and silently gives you no custom domain.
+# ---------------------------------------------------------------------------
+
+account_id = "55f7f16701d9222256ede2e60965a5de"
+
+# WHY timestamp-relay.<domain> AND NOT relay.timestamp.<domain>:
+# Cloudflare Universal SSL issues one certificate covering <domain> and
+# *.<domain>. A DNS wildcard matches EXACTLY ONE label, so *.example.com covers
+# timestamp.example.com and does NOT cover relay.timestamp.example.com. A
+# third-level custom domain deploys cleanly, creates its DNS record, resolves,
+# and then fails every TLS handshake
+# ("sslv3 alert handshake failure"), which is a deploy that looks successful and
+# serves nothing. Multi-level coverage needs paid Advanced Certificate Manager.
+# Measured on this zone 2026-09-17; the cert's SAN list is literally
+# "DNS:*.lucidtruthtechnologies.com, DNS:lucidtruthtechnologies.com".
+#
+# custom_domain = true makes Cloudflare create and manage the DNS record for
+# this hostname itself. That matters beyond convenience: it goes through the
+# Workers Custom Domains permission rather than Zone:DNS:Edit, so a deploy can
+# stand up its own hostname without the token ever being able to touch the rest
+# of the zone's DNS.
+routes = [
+  { pattern = "timestamp-relay.lucidtruthtechnologies.com", custom_domain = true },
+]
+
+# The relay keeps exactly one piece of state: a count of requests relayed,
+# published at /count. No fingerprints, addresses, origins or per-request
+# timestamps. Delete this block and the relay still works; /count reports zero.
+[[kv_namespaces]]
+binding = "COUNTER"
+id = "712dbd860fae4d8ab6b8dae59b1ff834"
 
 [vars]
-# Comma-separated origin allowlist. Leave unset for a wildcard, which is the
-# honest setting for public infrastructure since credentials are never accepted.
+# Comma-separated origin allowlist. Left unset deliberately: this is public
+# infrastructure, the relay never accepts credentials, and anyone is welcome to
+# point their own copy of the page at it. A wildcard is the honest setting.
+# An Origin header is set by the browser and forged trivially by anything that
+# is not one, so this is a convenience, not a security control.
 # ALLOWED_ORIGINS = "https://timestamp.lucidtruthtechnologies.com"

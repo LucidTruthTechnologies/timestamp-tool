@@ -1,0 +1,29 @@
+name = "timestamp-tool-site"
+compatibility_date = "2026-01-01"
+
+# ---------------------------------------------------------------------------
+# Serves the single built page. There is no Worker code at all: this is an
+# assets-only Worker, so the page is delivered from Cloudflare's static asset
+# store and no JavaScript of ours runs on the edge. Nothing about the tool is
+# server-side, and this config is the proof of that claim.
+#
+# SELF-HOSTERS: change account_id and routes, or delete routes entirely to get
+# <name>.<your-subdomain>.workers.dev.
+#
+# TOML ordering is load-bearing: top-level keys (account_id, routes) must come
+# BEFORE the first [table] header, or they are silently read as fields of that
+# table and ignored.
+#
+# The hostname is deliberately ONE label deep. Cloudflare Universal SSL covers
+# <domain> and *.<domain>, and a TLS wildcard matches exactly one label, so a
+# third-level name resolves and then fails every handshake.
+# ---------------------------------------------------------------------------
+
+account_id = "55f7f16701d9222256ede2e60965a5de"
+
+routes = [
+  { pattern = "timestamp.lucidtruthtechnologies.com", custom_domain = true },
+]
+
+[assets]
+directory = "../dist"

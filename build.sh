@@ -22,7 +22,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 VERSION="${1:-$(cat VERSION 2>/dev/null || echo 0.1.0)}"
-RELAY_URL="${RELAY_URL:-https://relay.timestamp.lucidtruthtechnologies.com}"
+RELAY_URL="${RELAY_URL:-https://timestamp-relay.lucidtruthtechnologies.com}"
 
 SRC=src
 OUT=dist
