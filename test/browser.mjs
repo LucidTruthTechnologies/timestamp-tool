@@ -193,10 +193,13 @@ ok('disclaimer names the legal entity first, then the DBA',
   await evaluate(sessionId, `
     /Kenneth G\\. Hartman Consulting Services LLC dba Lucid Truth Technologies/
       .test(document.body.innerText)`));
-ok('brand carries the trademark glyph, not a literal (TM)',
+/* REGISTERED sign, not the trademark sign. The mark is registered: the firm's site
+ * footer says so and the canonical logo files are named _R. U+00AE asserts a right the
+ * holder actually has; U+2122 understates it, and a literal "(R)" or "(TM)" is neither. */
+ok('brand carries the registered sign, not a trademark sign or a literal',
   await evaluate(sessionId, `
-    document.body.innerText.includes('Lucid Truth Technologies\u2122')
-    && !document.body.innerText.includes('Technologies(TM)')`));
+    document.body.innerText.includes('Lucid Truth Technologies\u00ae')
+    && !/Technologies(\\u2122|\\(TM\\)|\\(R\\))/.test(document.body.innerText)`));
 ok('brand never carries an entity suffix of its own',
   await evaluate(sessionId,
     `!/Lucid Truth Technologies,?\\s+(LLC|Inc|Ltd)/.test(document.body.innerText)`));

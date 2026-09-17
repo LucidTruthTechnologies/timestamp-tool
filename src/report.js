@@ -59,7 +59,8 @@ export function packageLicenseText() {
  *    order for a liability clause: the party that would actually be sued is the LLC, and
  *    a disclaimer naming a party that does not exist is worse than no disclaimer.
  *    Do not "simplify" this to the brand alone, and do not write "Lucid Truth
- *    Technologies, LLC", which names nothing.
+ *    Technologies, LLC", which names nothing. The mark is REGISTERED, so the glyph is
+ *    U+00AE and not U+2122; the trademark sign would understate a right the holder has.
  *
  * 2. IT DISCLAIMS THE TOOL, NOT THE TIMESTAMPS. A liability clause that reads as "this
  *    evidence is unreliable" would defeat the package it travels in. The tokens are signed
@@ -68,7 +69,7 @@ export function packageLicenseText() {
  */
 export const LIABILITY_PARAGRAPHS = [
   'This tool is provided as is, without warranty of any kind, express or implied. ' +
-  'Kenneth G. Hartman Consulting Services LLC dba Lucid Truth Technologies™ ' +
+  'Kenneth G. Hartman Consulting Services LLC dba Lucid Truth Technologies® ' +
   'accepts no liability for any use of, or any reliance on, this tool or ' +
   'anything it produces.',
 
@@ -564,7 +565,7 @@ NO WARRANTY, AND NO LIABILITY
 ${'-'.repeat(52)}
 
 This tool is provided as is, with no warranty of any kind. Kenneth G.
-Hartman Consulting Services LLC dba Lucid Truth Technologies™ accepts no
+Hartman Consulting Services LLC dba Lucid Truth Technologies® accepts no
 liability for any use of, or any reliance on, this tool or anything it
 produces. Using it creates no professional or client relationship, and
 nothing here is legal advice.

@@ -6,7 +6,7 @@ copy of each, and `build.sh` is the only thing that ever encodes them.
 
 | File | Use |
 |---|---|
-| `ltt-logo-light.png` | Lucid Truth Technologies mark, colored, shown on a light background |
+| `ltt-logo-light.png` | Lucid Truth Technologies® mark, colored, shown on a light background |
 | `ltt-logo-dark.png` | the same mark in white, shown under `prefers-color-scheme: dark` |
 
 Both are the canonical site logos, copied from `LucidTruthTechnologies.com`
