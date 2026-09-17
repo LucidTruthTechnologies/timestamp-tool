@@ -4,6 +4,13 @@
 #
 # The published artifact is ONE file with no external requests of any kind: no CDN,
 # no web font, no analytics, no source map. That is not minimalism for its own sake.
+#
+# Note the scope of that claim, which the check at the bottom of this script enforces:
+# it is about THE FILE. A host can still inject a script as it serves the HTML, and
+# the canonical deployment's host does exactly that (see "What the host adds" in
+# README.md). No build-time check can see that, which is why there is a separate
+# runtime census, test/external-resources.mjs, that counts what a real browser
+# actually requests.
 # A tool that claims your document never leaves your computer has to be auditable by
 # reading it, and a page that fetches code at run time cannot make that claim about
 # code it has not seen yet.

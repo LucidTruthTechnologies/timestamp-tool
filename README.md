@@ -7,9 +7,45 @@ by someone who has never heard of this tool.
 Your file is never uploaded. It is hashed in the browser, and only the 32-byte fingerprint
 is ever sent.
 
-- **Page:** `dist/index.html`, one self-contained file, no CDN, no fonts, no analytics
+- **Page:** `dist/index.html`, one self-contained file: no CDN, no fonts, no analytics **in the
+  file itself**. The hosted copy at `timestamp.lucidtruthtechnologies.com` has one third-party
+  script added by the host, described under [What the host adds](#what-the-host-adds).
 - **Relay:** `relay/`, a Cloudflare Worker you can run yourself
 - **License:** MIT
+
+## What the host adds
+
+`dist/index.html` makes no external requests. The **hosted** copy is not the same claim, and
+this section exists because the difference is exactly the sort of thing a tool like this
+should not let a reader discover on their own.
+
+`lucidtruthtechnologies.com` has Cloudflare Web Analytics enabled at the zone level with
+automatic installation, so Cloudflare's edge injects a performance beacon into the HTML as it
+is served. Loading the page therefore makes two requests the file does not ask for:
+
+- `GET https://static.cloudflareinsights.com/beacon.min.js/...`
+- `POST https://timestamp.lucidtruthtechnologies.com/cdn-cgi/rum`
+
+**What that beacon sends**, captured verbatim from the live page on 2026-09-17 rather than
+summarized from documentation: `startTime`, a per-pageload random `pageloadId`, `eventType`,
+`location` (the page URL), browser engine and version, JavaScript heap sizes, first paint and
+first contentful paint, a block of navigation timings, and a `siteToken`.
+
+**What it does not send, and structurally cannot:** your document, your file's name, its size,
+its fingerprint, or anything you type. It is injected into the page's HTML and reads browser
+performance counters. It has no access to the file you select, which never leaves the `File`
+object the browser hands to the page. The `location` field carries only the bare page URL,
+because this tool never puts anything in a query string or fragment.
+
+**It still fires, and you may not want it.** If that matters to you, the tool is public and
+self-contained: download `dist/index.html`, open it from your own disk or serve it yourself,
+and the beacon is gone because it was never in the file. Verify that claim rather than taking
+it, with `node test/external-resources.mjs <url>`, which lists every request a real browser
+makes while loading a given copy of the page.
+
+Nothing about the beacon touches the evidence. The tokens in your archive are signed by the
+timestamp authorities, and the openssl commands in every archive verify them without reference
+to this page, its host, or its author.
 
 ## Why a relay is needed at all
 
@@ -151,12 +187,19 @@ is not evidence that it *was* version 0.1.0.
 node test/roundtrip.mjs <fixture-dir>   # our DER against real openssl artifacts
 node test/tamper.mjs    <fixture-dir>   # the verifier must FAIL when it should
 node test/browser.mjs <url> <file> [expected-sha256]   # the built page in real Chrome
+node test/external-resources.mjs <url>  # every request a real browser actually makes
 ```
 
 `roundtrip` asserts that our `TimeStampReq` is **byte-identical** to
 `openssl ts -query -data FILE -sha256 -cert`, and parses real responses from all four
 authorities. `browser.mjs` drives `dist/index.html` in headless Chrome over CDP using Node's
 built-in WebSocket, with no test framework and no Playwright.
+
+`external-resources.mjs` exists because reading the markup is not enough. A page whose
+delivered bytes match the built bytes can still cause a browser to fetch something else, if
+the host injects it. It lists every request and exits non-zero on any cross-origin one, so
+the claim is measured against a running browser rather than inferred from a file. Run it
+against your own copy to confirm what that copy does.
 
 A fixture directory needs `probe.txt`, `probe.tsq` and `{freetsa,digicert,sectigo,sigstore}.tsr`.
 Generate them with:
