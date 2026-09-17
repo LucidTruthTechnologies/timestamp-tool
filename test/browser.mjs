@@ -193,6 +193,10 @@ ok('disclaimer names the legal entity first, then the DBA',
   await evaluate(sessionId, `
     /Kenneth G\\. Hartman Consulting Services LLC dba Lucid Truth Technologies/
       .test(document.body.innerText)`));
+ok('brand carries the trademark glyph, not a literal (TM)',
+  await evaluate(sessionId, `
+    document.body.innerText.includes('Lucid Truth Technologies\u2122')
+    && !document.body.innerText.includes('Technologies(TM)')`));
 ok('brand never carries an entity suffix of its own',
   await evaluate(sessionId,
     `!/Lucid Truth Technologies,?\\s+(LLC|Inc|Ltd)/.test(document.body.innerText)`));

@@ -68,7 +68,7 @@ export function packageLicenseText() {
  */
 export const LIABILITY_PARAGRAPHS = [
   'This tool is provided as is, without warranty of any kind, express or implied. ' +
-  'Kenneth G. Hartman Consulting Services LLC dba Lucid Truth Technologies(TM), ' +
+  'Kenneth G. Hartman Consulting Services LLC dba Lucid Truth Technologies™ ' +
   'accepts no liability for any use of, or any reliance on, this tool or ' +
   'anything it produces.',
 
@@ -564,7 +564,7 @@ NO WARRANTY, AND NO LIABILITY
 ${'-'.repeat(52)}
 
 This tool is provided as is, with no warranty of any kind. Kenneth G.
-Hartman Consulting Services LLC dba Lucid Truth Technologies(TM), accepts no
+Hartman Consulting Services LLC dba Lucid Truth Technologies™ accepts no
 liability for any use of, or any reliance on, this tool or anything it
 produces. Using it creates no professional or client relationship, and
 nothing here is legal advice.
