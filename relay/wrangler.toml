@@ -1,0 +1,16 @@
+name = "timestamp-relay"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# The relay keeps exactly one piece of state: a count of requests relayed.
+# Create it with:  wrangler kv namespace create COUNTER
+# then paste the returned id below. The relay runs without it; the counter is
+# simply unavailable and /count reports zero.
+# [[kv_namespaces]]
+# binding = "COUNTER"
+# id = "PUT_YOUR_KV_NAMESPACE_ID_HERE"
+
+[vars]
+# Comma-separated origin allowlist. Leave unset for a wildcard, which is the
+# honest setting for public infrastructure since credentials are never accepted.
+# ALLOWED_ORIGINS = "https://timestamp.lucidtruthtechnologies.com"

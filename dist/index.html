@@ -1,0 +1,3316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timestamp a Document</title>
+<meta name="description" content="Prove that a document existed no later than a given moment, using independent timestamp authorities. Your file never leaves your computer.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128336;</text></svg>">
+<style>:root {
+  color-scheme: light dark;
+  --paper: #ffffff;
+  --ink: #16191f;
+  --quiet: #5a6472;
+  --rule: #d9dee6;
+  --panel: #f5f7fa;
+  --accent: #1c4f8b;
+  --accent-ink: #ffffff;
+  --pass: #1a6b3c;
+  --fail: #a32218;
+  --gap: #8a5a00;
+  --focus: #1c4f8b;
+  --radius: 6px;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14171c;
+    --ink: #e7ebf1;
+    --quiet: #99a3b2;
+    --rule: #2a313b;
+    --panel: #1b1f26;
+    --accent: #6ea8e8;
+    --accent-ink: #0d1014;
+    --pass: #5fce93;
+    --fail: #ff9c92;
+    --gap: #e6b95e;
+    --focus: #6ea8e8;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #14171c;
+  --ink: #e7ebf1;
+  --quiet: #99a3b2;
+  --rule: #2a313b;
+  --panel: #1b1f26;
+  --accent: #6ea8e8;
+  --accent-ink: #0d1014;
+  --pass: #5fce93;
+  --fail: #ff9c92;
+  --gap: #e6b95e;
+  --focus: #6ea8e8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.6 var(--sans);
+  padding: 0 16px 6rem;
+}
+
+.wrap { max-width: 44rem; margin: 0 auto; }
+
+header { padding: 2.5rem 0 1rem; }
+h1 { font-size: 1.5rem; margin: 0 0 .4rem; line-height: 1.2; }
+.tagline { color: var(--quiet); margin: 0; font-size: 1rem; }
+
+h2 { font-size: 1.15rem; margin: 2rem 0 .6rem; }
+h3 { font-size: 1rem; margin: 1.4rem 0 .4rem; }
+
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.2rem;
+  margin: 1rem 0;
+}
+
+/* ---- drop zone ---- */
+.drop {
+  border: 2px dashed var(--rule);
+  border-radius: var(--radius);
+  padding: 2.4rem 1.2rem;
+  text-align: center;
+  background: var(--panel);
+  transition: border-color .15s, background .15s;
+  cursor: pointer;
+}
+.drop:hover, .drop.over { border-color: var(--accent); }
+.drop.over { background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.drop p { margin: .35rem 0; }
+.drop .big { font-size: 1.08rem; font-weight: 600; }
+.drop .small { color: var(--quiet); font-size: .9rem; }
+
+/* ---- buttons ---- */
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: .6rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+button.secondary { background: transparent; color: var(--accent); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.link {
+  background: none; border: none; color: var(--accent);
+  text-decoration: underline; padding: 0; font-weight: 400;
+}
+.actions { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1rem; }
+
+/* ---- forms ---- */
+label { display: block; font-weight: 600; margin: .8rem 0 .3rem; }
+input[type="text"], textarea, select {
+  font: inherit; width: 100%; padding: .55rem .7rem;
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--paper); color: var(--ink);
+}
+input.mono, textarea.mono { font-family: var(--mono); font-size: .9rem; }
+.hint { color: var(--quiet); font-size: .88rem; margin: .3rem 0 0; }
+.err { color: var(--fail); font-size: .9rem; margin: .4rem 0 0; }
+
+/* ---- key/value ---- */
+dl.kv { display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: .35rem .9rem; margin: .6rem 0; }
+dl.kv dt { color: var(--quiet); font-size: .9rem; }
+dl.kv dd { margin: 0; font-size: .92rem; word-break: break-all; }
+.hash { font-family: var(--mono); font-size: .82rem; word-break: break-all; }
+
+/* ---- results ---- */
+.auth { border: 1px solid var(--rule); border-radius: var(--radius); margin: .8rem 0; overflow: hidden; }
+.auth > summary {
+  padding: .7rem .9rem; cursor: pointer; font-weight: 600;
+  display: flex; justify-content: space-between; gap: .8rem; align-items: baseline;
+}
+.auth > summary::-webkit-details-marker { display: none; }
+.auth .body { padding: 0 .9rem .9rem; border-top: 1px solid var(--rule); }
+.tally { font-weight: 400; font-size: .85rem; color: var(--quiet); font-family: var(--mono); }
+
+ul.checks { list-style: none; padding: 0; margin: .6rem 0; }
+ul.checks li { display: grid; grid-template-columns: 7.5rem 1fr; gap: .7rem; padding: .45rem 0; border-bottom: 1px solid var(--rule); font-size: .92rem; }
+ul.checks li:last-child { border-bottom: none; }
+.tag { font-family: var(--mono); font-size: .72rem; letter-spacing: .04em; font-weight: 700; padding: .12rem .4rem; border-radius: 3px; text-align: center; height: fit-content; white-space: nowrap; }
+.tag.pass { color: var(--pass); border: 1px solid currentColor; }
+.tag.fail { color: var(--fail); border: 1px solid currentColor; background: color-mix(in srgb, var(--fail) 12%, transparent); }
+.tag.gap  { color: var(--gap);  border: 1px solid currentColor; }
+.check-detail { color: var(--quiet); font-size: .86rem; margin-top: .15rem; }
+
+/* ---- progress ---- */
+.bar { height: 5px; background: var(--rule); border-radius: 3px; overflow: hidden; margin: .5rem 0; }
+.bar > span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .12s linear; }
+.status { font-size: .9rem; color: var(--quiet); }
+
+.note { border-left: 3px solid var(--rule); padding: .1rem 0 .1rem .9rem; margin: 1rem 0; color: var(--quiet); font-size: .93rem; }
+.note.warn { border-left-color: var(--gap); }
+.note strong { color: var(--ink); }
+
+pre.cmd {
+  background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius);
+  padding: .7rem .9rem; overflow-x: auto; font-family: var(--mono); font-size: .82rem; margin: .5rem 0;
+}
+
+.hidden { display: none !important; }
+footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--rule); color: var(--quiet); font-size: .86rem; }
+footer p { margin: .4rem 0; }
+
+@media (max-width: 30rem) {
+  dl.kv { grid-template-columns: 1fr; gap: .1rem .5rem; }
+  dl.kv dt { margin-top: .5rem; }
+  ul.checks li { grid-template-columns: 1fr; gap: .2rem; }
+  .tag { justify-self: start; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Timestamp a document</h1>
+  <p class="tagline">Get independent, third-party proof that your document existed no later than
+  right now. Your file never leaves this computer.</p>
+</header>
+
+<!-- ============================================ step 1: input -->
+<section id="step-input">
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a file to timestamp">
+    <p class="big">Drop a file here, or click to choose one</p>
+    <p class="small">Any file. A PDF, a photograph, a spreadsheet, a ZIP of a whole folder.</p>
+  </div>
+  <input type="file" id="file-input" class="hidden">
+  <p class="err hidden" id="input-error"></p>
+
+  <p class="hint">Your file is <strong>not uploaded</strong>. It is read inside this page to
+  calculate a fingerprint, and only that fingerprint, 32 bytes, is ever sent anywhere.
+  <button class="link" id="use-hash" type="button">I already have a fingerprint instead</button></p>
+
+  <div class="note">
+    <p><strong>What this does.</strong> It calculates a fingerprint of your file and asks several
+    independent timestamp authorities to sign a statement that they saw that fingerprint at a
+    particular moment. You get back a single ZIP file holding your document, their signed
+    statements, their certificates, and a plain-English record of everything that was done.</p>
+    <p><strong>What it cannot do.</strong> It cannot show who wrote the document, who held it, or
+    whether anything in it is true. It cannot reach backwards: a file stamped today says nothing
+    about last year. And it fixes only the <em>latest</em> moment your document can have existed,
+    never the earliest.</p>
+  </div>
+</section>
+
+<!-- ============================================ hash-only entry -->
+<section id="step-hash-entry" class="hidden">
+  <h2>Use a fingerprint you already have</h2>
+  <p>Use this when the document itself must not leave your control, even to be read by this page.
+  You calculate the fingerprint yourself and paste it here.</p>
+  <pre class="cmd">sha256sum yourfile.pdf         # macOS: shasum -a 256 yourfile.pdf
+                               # Windows: certutil -hashfile yourfile.pdf SHA256</pre>
+  <label for="hash-input">SHA-256 fingerprint (64 hexadecimal characters)</label>
+  <input type="text" id="hash-input" class="mono" spellcheck="false" autocomplete="off"
+         placeholder="be2b985c3ca89124cf0d765d7bd365a81d94f5fceb1fab1060d0bd8295aad56e">
+  <p class="err hidden" id="hash-error"></p>
+  <div class="note warn">
+    <p><strong>Read this before using it.</strong> The archive you get will not contain your
+    document, so on its own it binds to nothing. It becomes meaningful only beside a file that
+    hashes to exactly the value you enter. This tool cannot see what you hashed, and cannot check
+    that you hashed it correctly. <strong>Preserving the document is entirely your job.</strong></p>
+  </div>
+  <div class="actions">
+    <button id="hash-accept" type="button">Use this fingerprint</button>
+    <button id="hash-back" class="secondary" type="button">Back</button>
+  </div>
+</section>
+
+<!-- ============================================ hashing -->
+<section id="step-hashing" class="hidden">
+  <h2>Reading your file</h2>
+  <p class="status"><span id="hashing-name"></span>, <span id="hashing-size"></span></p>
+  <div class="bar"><span id="hash-bar"></span></div>
+  <p class="status" id="hash-status">Starting</p>
+  <p class="hint hidden" id="hashing-note"></p>
+  <p class="hint">This happens entirely on your computer. Nothing is being uploaded.</p>
+</section>
+
+<!-- ============================================ review -->
+<section id="step-review" class="hidden">
+  <h2>Ready to send</h2>
+  <dl class="kv">
+    <dt>What will be stamped</dt><dd id="rev-mode"></dd>
+    <dt>File name</dt><dd id="rev-name"></dd>
+    <dt>Size</dt><dd id="rev-size"></dd>
+    <dt>Fingerprint</dt><dd class="hash" id="rev-hash"></dd>
+    <dt>Request size</dt><dd id="rev-req"></dd>
+  </dl>
+
+  <div class="note warn hidden" id="hash-only-warning">
+    <p><strong>Fingerprint-only mode.</strong> The archive will contain everything except your
+    document. Keep the document safe yourself; without it the archive proves nothing.</p>
+  </div>
+
+  <p>Only the fingerprint above is sent. It cannot be turned back into your document.</p>
+
+  <h3>How should the request be sent?</h3>
+  <div class="actions">
+    <button id="btn-relay" type="button">Send it for me</button>
+    <button id="btn-offline" class="secondary" type="button">I will send it myself</button>
+  </div>
+
+  <div class="note">
+    <p><strong>Send it for me</strong> is the ordinary choice. The fingerprint goes through a small
+    relay to each authority. The relay is necessary because timestamp authorities refuse requests
+    made directly by a web browser. It holds no signing key, so it cannot forge or alter a
+    timestamp; the worst it could do is learn the fingerprint, and if it returned a timestamp for
+    a <em>different</em> fingerprint this page would catch it and say so.</p>
+    <p><strong>I will send it myself</strong> keeps everything on your own network. The page gives
+    you the request file and a small script; you run it, then drag the replies back here. Choose
+    this if even the fingerprint must not pass through anyone else's server.</p>
+  </div>
+
+  <details>
+    <summary class="hint">Use a different relay (for self-hosting)</summary>
+    <label for="relay-url">Relay address</label>
+    <input type="text" id="relay-url" class="mono" spellcheck="false">
+    <p class="hint">The relay is open source and you can run your own. See the project README.</p>
+  </details>
+</section>
+
+<!-- ============================================ submitting -->
+<section id="step-submitting" class="hidden">
+  <h2>Contacting the authorities</h2>
+  <p class="hint">All of them at once, with the same request.</p>
+  <div id="submit-rows"></div>
+</section>
+
+<!-- ============================================ offline -->
+<section id="step-offline" class="hidden">
+  <h2>Send the request yourself</h2>
+  <p><strong>1.</strong> <code>request.tsq</code> has been downloaded. It contains your fingerprint
+  and nothing else.</p>
+  <p><strong>2.</strong> Download the helper for your system and put it in the same folder as
+  <code>request.tsq</code>, then run it.</p>
+  <div class="actions">
+    <button id="dl-sh" class="secondary" type="button">Download stamp.sh (macOS, Linux)</button>
+    <button id="dl-bat" class="secondary" type="button">Download stamp.bat (Windows)</button>
+    <button id="dl-tsq" class="secondary" type="button">Download request.tsq again</button>
+  </div>
+  <p class="hint">On macOS you may need <code>chmod +x stamp.sh</code> first. Your system may warn
+  you about running a downloaded script; the whole script is shown below so you can read every line
+  of it before you do, or simply run the commands yourself.</p>
+
+  <details>
+    <summary class="hint">Show the commands</summary>
+    <pre class="cmd" id="offline-sh"></pre>
+    <pre class="cmd" id="offline-bat"></pre>
+  </details>
+
+  <p><strong>3.</strong> Drag the reply files back here.</p>
+  <div class="drop" id="resp-drop" tabindex="0" role="button" aria-label="Drop the reply files here">
+    <p class="big">Drop the .tsr files here</p>
+    <p class="small">freetsa.tsr, digicert.tsr, sectigo.tsr, sigstore.tsr</p>
+  </div>
+  <input type="file" id="resp-input" multiple class="hidden">
+  <p class="err hidden" id="resp-error"></p>
+</section>
+
+<!-- ============================================ results -->
+<section id="step-results" class="hidden">
+  <h2>Results</h2>
+  <p id="result-headline"></p>
+  <p class="err hidden" id="result-missing"></p>
+  <p class="hint hidden" id="spread-note"><span id="spread"></span></p>
+
+  <div id="result-authorities"></div>
+
+  <div class="note">
+    <p><strong>Why there is no single tick.</strong> Each check is listed separately because they
+    fail separately, and knowing which one failed is the whole point. A timestamp can carry a
+    perfectly valid signature and still have nothing to do with your document. One green tick
+    covering all of these would hide exactly that case.</p>
+    <p><strong>Chain to a trusted root is marked NOT RUN</strong> on every authority, and this is
+    not a fault. A web browser does not let a page read your computer's list of trusted
+    certificate authorities. The archive contains the exact commands to complete that check with
+    standard software, and they should be run before this timestamp is relied on.</p>
+  </div>
+
+  <div class="actions">
+    <button id="btn-download" type="button" disabled>Download the evidence archive</button>
+    <button id="btn-restart" class="secondary" type="button">Start again</button>
+  </div>
+  <p class="err hidden" id="result-error"></p>
+
+  <div class="note hidden" id="download-done">
+    <p><strong>Saved as <span id="download-name"></span>.</strong></p>
+    <p>Keep that ZIP file exactly as it is. Do not open it and re-save it, and do not add anything
+    to it. To work with the document, extract a <strong>copy</strong> and work on the copy, leaving
+    the archive untouched. Keep more than one copy in places that would not be lost together.</p>
+    <p>Open <code>README-FIRST.txt</code> inside it. It tells you the one check to run first.</p>
+  </div>
+</section>
+
+<footer>
+  <p><strong>This tool is not a validated forensic instrument.</strong> It has not been through
+  formal validation. That does not weaken what it produces: the evidence in your archive is a set
+  of tokens signed by independent third parties, checkable with standard software using the
+  commands included in the archive. Verify the tokens, not the tool.</p>
+  <p>Everything happens in your browser. There is no account, no upload, and no record kept of
+  your document or its fingerprint by this page.</p>
+  <p>Version <span id="tool-version"></span> &middot;
+  <a href="https://github.com/LucidTruthTechnologies/timestamp-tool">Source code, including the relay</a> &middot;
+  Lucid Truth Technologies</p>
+</footer>
+
+</div>
+<script type="module">/* 0.1.0. Built from src/ by build.sh.
+ * Module boundaries are removed; the sources are in the repository, one file
+ * per section below, and each section is byte-identical to its source apart
+ * from stripped import lines and the export keyword.
+ */
+
+/* ===== sha256.js ================================================== */
+/* sha256.js: streaming SHA-256.
+ *
+ * WHY THIS EXISTS AT ALL, given WebCrypto ships SHA-256:
+ * crypto.subtle.digest() takes ONE ArrayBuffer. There is no streaming/incremental
+ * form in the Web Crypto API. Hashing a multi-gigabyte evidence ZIP therefore means
+ * holding the whole file in memory, which fails on exactly the large case that
+ * matters. This is a chunk-at-a-time implementation so file size is bounded by disk,
+ * not by RAM.
+ *
+ * It is NOT a replacement for WebCrypto. Below LARGE_FILE_THRESHOLD the caller
+ * computes BOTH and asserts they agree (see hashFile). Two independent
+ * implementations returning the same digest is a real integrity check on the one
+ * number the whole package hangs from; a single implementation is a single point of
+ * silent failure.
+ */
+
+const K = new Uint32Array([
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+]);
+
+class Sha256 {
+  constructor() {
+    this.h = new Uint32Array([
+      0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+      0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+    ]);
+    this.buf = new Uint8Array(64);
+    this.bufLen = 0;
+    this.byteCount = 0;
+    this.w = new Uint32Array(64);
+    this.done = false;
+  }
+
+  /** Absorb a chunk. Call as many times as you like, then digest(). */
+  update(bytes) {
+    if (this.done) throw new Error('Sha256: update() after digest()');
+    let off = 0;
+    this.byteCount += bytes.length;
+
+    if (this.bufLen > 0) {
+      const need = 64 - this.bufLen;
+      const take = Math.min(need, bytes.length);
+      this.buf.set(bytes.subarray(0, take), this.bufLen);
+      this.bufLen += take;
+      off = take;
+      if (this.bufLen === 64) {
+        this._block(this.buf, 0);
+        this.bufLen = 0;
+      }
+    }
+
+    while (off + 64 <= bytes.length) {
+      this._block(bytes, off);
+      off += 64;
+    }
+
+    if (off < bytes.length) {
+      this.buf.set(bytes.subarray(off), 0);
+      this.bufLen = bytes.length - off;
+    }
+    return this;
+  }
+
+  /** Finalize. Returns a 32-byte Uint8Array. */
+  digest() {
+    if (this.done) throw new Error('Sha256: digest() called twice');
+    const bitLenHi = Math.floor(this.byteCount / 0x20000000);
+    const bitLenLo = (this.byteCount << 3) >>> 0;
+
+    // Padding: 0x80, then zeros, then 8-byte big-endian bit length.
+    const pad = new Uint8Array(this.bufLen < 56 ? 64 : 128);
+    pad.set(this.buf.subarray(0, this.bufLen), 0);
+    pad[this.bufLen] = 0x80;
+    const dv = new DataView(pad.buffer);
+    dv.setUint32(pad.length - 8, bitLenHi, false);
+    dv.setUint32(pad.length - 4, bitLenLo, false);
+    for (let i = 0; i < pad.length; i += 64) this._block(pad, i);
+
+    const out = new Uint8Array(32);
+    const odv = new DataView(out.buffer);
+    for (let i = 0; i < 8; i++) odv.setUint32(i * 4, this.h[i], false);
+    this.done = true;
+    return out;
+  }
+
+  _block(p, off) {
+    const w = this.w;
+    const dv = new DataView(p.buffer, p.byteOffset + off, 64);
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(i * 4, false);
+    for (let i = 16; i < 64; i++) {
+      const a = w[i - 15], b = w[i - 2];
+      const s0 = (((a >>> 7) | (a << 25)) ^ ((a >>> 18) | (a << 14)) ^ (a >>> 3)) >>> 0;
+      const s1 = (((b >>> 17) | (b << 15)) ^ ((b >>> 19) | (b << 13)) ^ (b >>> 10)) >>> 0;
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+
+    let [a, b, c, d, e, f, g, h] = this.h;
+    for (let i = 0; i < 64; i++) {
+      const S1 = (((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7))) >>> 0;
+      const ch = ((e & f) ^ (~e & g)) >>> 0;
+      const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = (((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10))) >>> 0;
+      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;
+      const t2 = (S0 + maj) >>> 0;
+      h = g; g = f; f = e;
+      e = (d + t1) >>> 0;
+      d = c; c = b; b = a;
+      a = (t1 + t2) >>> 0;
+    }
+
+    const H = this.h;
+    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0;
+    H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0;
+    H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+  }
+}
+
+/** One-shot convenience over the streaming core. */
+function sha256(bytes) {
+  return new Sha256().update(bytes).digest();
+}
+
+/* Above this size we do not attempt the WebCrypto cross-check, because it would
+ * require materializing the whole file as one ArrayBuffer, which is the very thing the
+ * streaming path exists to avoid. 256 MiB is comfortably inside what a browser
+ * tab will allocate without the allocation itself becoming the failure. */
+const LARGE_FILE_THRESHOLD = 256 * 1024 * 1024;
+const CHUNK = 4 * 1024 * 1024;
+
+/**
+ * Hash a File/Blob by streaming it off disk.
+ *
+ * Returns { digest, method, crossChecked }.
+ *   method       'webcrypto+js' when both ran and agreed, 'js-streaming' otherwise
+ *   crossChecked true only when two independent implementations produced the same
+ *                32 bytes. Reported verbatim in the package; never asserted when false.
+ *
+ * Throws on cross-check disagreement rather than picking a winner. If two
+ * implementations disagree about the document's hash, every downstream claim in the
+ * package is void, and guessing which one is right is the worst available move.
+ */
+async function hashFile(file, onProgress) {
+  const hasher = new Sha256();
+  let read = 0;
+
+  for (let pos = 0; pos < file.size; pos += CHUNK) {
+    const slice = file.slice(pos, Math.min(pos + CHUNK, file.size));
+    const buf = new Uint8Array(await slice.arrayBuffer());
+    hasher.update(buf);
+    read += buf.length;
+    if (onProgress) onProgress(read, file.size);
+  }
+
+  const digest = hasher.digest();
+
+  if (file.size <= LARGE_FILE_THRESHOLD && globalThis.crypto?.subtle) {
+    const whole = new Uint8Array(await file.arrayBuffer());
+    const ref = new Uint8Array(await crypto.subtle.digest('SHA-256', whole));
+    if (!bytesEqual(digest, ref)) {
+      throw new Error(
+        'SHA-256 cross-check FAILED: the streaming implementation and the browser\'s ' +
+        'WebCrypto disagree about this file\'s digest. No package will be produced. ' +
+        'Please report this; it is a defect, not a problem with your file.'
+      );
+    }
+    return { digest, method: 'webcrypto+js', crossChecked: true };
+  }
+
+  return { digest, method: 'js-streaming', crossChecked: false };
+}
+
+function bytesEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+function toHex(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += bytes[i].toString(16).padStart(2, '0');
+  return s;
+}
+
+function fromHex(hex) {
+  const clean = hex.replace(/[\s:]/g, '');
+  if (!/^[0-9a-fA-F]*$/.test(clean)) throw new Error('not hexadecimal');
+  if (clean.length % 2 !== 0) throw new Error('odd number of hex digits');
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.substr(i * 2, 2), 16);
+  return out;
+}
+
+/* ===== asn1.js ================================================== */
+/* asn1.js: minimal DER encoder and decoder.
+ *
+ * Scope is deliberately narrow. This handles exactly the DER that RFC 3161
+ * timestamping needs and nothing else. It is not a general ASN.1 library and should
+ * not grow into one: every construct it does not implement is a construct that
+ * cannot silently misparse.
+ *
+ * DER, not BER. Definite lengths only. An indefinite length (0x80) is rejected
+ * rather than tolerated, because accepting it would mean accepting two different
+ * encodings of the same value, and a signature is computed over bytes.
+ */
+
+const TAG = {
+  BOOLEAN: 0x01,
+  INTEGER: 0x02,
+  BIT_STRING: 0x03,
+  OCTET_STRING: 0x04,
+  NULL: 0x05,
+  OID: 0x06,
+  UTF8String: 0x0c,
+  SEQUENCE: 0x30,
+  SET: 0x31,
+  PrintableString: 0x13,
+  IA5String: 0x16,
+  UTCTime: 0x17,
+  GeneralizedTime: 0x18,
+  BMPString: 0x1e,
+};
+
+/* ---------------------------------------------------------------- encoding -- */
+
+/** Encode a length in DER short or long form. */
+function encodeLength(n) {
+  if (n < 0x80) return Uint8Array.of(n);
+  const bytes = [];
+  let v = n;
+  while (v > 0) { bytes.unshift(v & 0xff); v = Math.floor(v / 256); }
+  return Uint8Array.of(0x80 | bytes.length, ...bytes);
+}
+
+/** Wrap a payload in tag + length. */
+function derTlv(tag, payload) {
+  const body = payload instanceof Uint8Array ? payload : derConcat(payload);
+  const len = encodeLength(body.length);
+  const out = new Uint8Array(1 + len.length + body.length);
+  out[0] = tag;
+  out.set(len, 1);
+  out.set(body, 1 + len.length);
+  return out;
+}
+
+function derConcat(chunks) {
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
+}
+
+const derSeq = (...items) => derTlv(TAG.SEQUENCE, derConcat(items));
+const derSet = (...items) => derTlv(TAG.SET, derConcat(items));
+const derNull = () => Uint8Array.of(TAG.NULL, 0x00);
+const derBool = (b) => Uint8Array.of(TAG.BOOLEAN, 0x01, b ? 0xff : 0x00);
+const derOctetString = (bytes) => derTlv(TAG.OCTET_STRING, bytes);
+
+/**
+ * DER INTEGER from raw big-endian magnitude bytes, non-negative.
+ *
+ * Two rules that are easy to get wrong and produce a request no TSA will accept:
+ * leading zero bytes are stripped, and a leading byte with the high bit set gets a
+ * 0x00 prefix so the value is not read as negative.
+ */
+function derInteger(magnitude) {
+  let i = 0;
+  while (i < magnitude.length - 1 && magnitude[i] === 0x00) i++;
+  let body = magnitude.subarray(i);
+  if (body.length === 0) body = Uint8Array.of(0x00);
+  if (body[0] & 0x80) body = derConcat([Uint8Array.of(0x00), body]);
+  return derTlv(TAG.INTEGER, body);
+}
+
+function derIntegerFromNumber(n) {
+  if (!Number.isSafeInteger(n) || n < 0) throw new Error('integerFromNumber: non-negative safe integer required');
+  if (n === 0) return derTlv(TAG.INTEGER, Uint8Array.of(0));
+  const bytes = [];
+  let v = n;
+  while (v > 0) { bytes.unshift(v & 0xff); v = Math.floor(v / 256); }
+  return derInteger(Uint8Array.from(bytes));
+}
+
+/** Encode a dotted OID string, for example '2.16.840.1.101.3.4.2.1'. */
+function derOid(dotted) {
+  const parts = dotted.split('.').map(Number);
+  if (parts.length < 2) throw new Error('oid: need at least two arcs');
+  const body = [40 * parts[0] + parts[1]];
+  for (let i = 2; i < parts.length; i++) {
+    let v = parts[i];
+    const stack = [v & 0x7f];
+    v = Math.floor(v / 128);
+    while (v > 0) { stack.unshift((v & 0x7f) | 0x80); v = Math.floor(v / 128); }
+    body.push(...stack);
+  }
+  return derTlv(TAG.OID, Uint8Array.from(body));
+}
+
+/* ---------------------------------------------------------------- decoding -- */
+
+/**
+ * A parsed TLV.
+ *   tag        the raw tag byte
+ *   header     byte length of tag + length octets
+ *   length     byte length of the content
+ *   start,end  offsets of the CONTENT within the original buffer
+ *   outerStart,outerEnd  offsets of tag + length + content
+ *
+ * Offsets are kept against the ORIGINAL buffer rather than copying, because
+ * signature verification needs the exact original bytes of a substructure, and any
+ * re-encoding risks producing a different, equally valid DER that verifies against
+ * nothing.
+ */
+function derParse(buf, offset = 0) {
+  if (offset >= buf.length) throw new Error('DER: read past end of buffer');
+  const tag = buf[offset];
+  let p = offset + 1;
+  if (p >= buf.length) throw new Error('DER: truncated after tag');
+
+  let length = buf[p++];
+  if (length === 0x80) throw new Error('DER: indefinite length is BER, not DER, and is refused');
+  if (length & 0x80) {
+    const count = length & 0x7f;
+    if (count > 6) throw new Error('DER: length field too large');
+    if (p + count > buf.length) throw new Error('DER: truncated length field');
+    length = 0;
+    for (let i = 0; i < count; i++) length = length * 256 + buf[p++];
+  }
+
+  const start = p;
+  const end = start + length;
+  if (end > buf.length) throw new Error(`DER: content runs past end of buffer (need ${end}, have ${buf.length})`);
+
+  return { tag, header: start - offset, length, start, end, outerStart: offset, outerEnd: end, buf };
+}
+
+/** Parse every TLV directly inside a constructed node. */
+function derChildren(node) {
+  const out = [];
+  let p = node.start;
+  while (p < node.end) {
+    const child = derParse(node.buf, p);
+    out.push(child);
+    p = child.outerEnd;
+  }
+  return out;
+}
+
+/** Content bytes of a node, as a view onto the original buffer. */
+const derContent = (node) => node.buf.subarray(node.start, node.end);
+
+/** Full tag + length + content bytes, as a view onto the original buffer. */
+const derOuter = (node) => node.buf.subarray(node.outerStart, node.outerEnd);
+
+function derIsContext(node, number) {
+  return (node.tag & 0xc0) === 0x80 && (node.tag & 0x1f) === number;
+}
+
+function derIsConstructed(node) {
+  return (node.tag & 0x20) !== 0;
+}
+
+/** Decode an INTEGER node to a hex string. Serial numbers exceed Number range. */
+function derIntToHex(node) {
+  const c = derContent(node);
+  let i = 0;
+  while (i < c.length - 1 && c[i] === 0x00) i++;
+  let s = '';
+  for (; i < c.length; i++) s += c[i].toString(16).padStart(2, '0');
+  return s.length ? s : '00';
+}
+
+/** Decode a small INTEGER node to a Number. Throws if it will not fit safely. */
+function derIntToNumber(node) {
+  const c = derContent(node);
+  if (c.length > 6) throw new Error('DER: integer too large for a safe Number');
+  let v = 0;
+  for (let i = 0; i < c.length; i++) v = v * 256 + c[i];
+  return v;
+}
+
+/** Decode an OID node to its dotted string. */
+function derOidToString(node) {
+  const c = derContent(node);
+  if (c.length === 0) return '';
+  const first = Math.floor(c[0] / 40);
+  const second = c[0] % 40;
+  const arcs = [first, second];
+  let v = 0;
+  for (let i = 1; i < c.length; i++) {
+    v = v * 128 + (c[i] & 0x7f);
+    if ((c[i] & 0x80) === 0) { arcs.push(v); v = 0; }
+  }
+  return arcs.join('.');
+}
+
+/**
+ * Decode a GeneralizedTime node to a JS Date, plus the literal string as it appeared.
+ *
+ * The literal is kept and reported alongside the Date because the token's own text is
+ * the evidence and a Date is an interpretation of it. Fractional seconds are
+ * preserved in the literal even where the Date rounds them.
+ */
+function derGeneralizedTime(node) {
+  const raw = new TextDecoder('ascii').decode(derContent(node));
+  const m = raw.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\.\d+)?Z$/);
+  if (!m) throw new Error(`DER: unsupported GeneralizedTime form: ${raw}`);
+  const [, y, mo, d, h, mi, s, frac] = m;
+  const ms = frac ? Math.round(parseFloat(frac) * 1000) : 0;
+  const date = new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s, ms));
+  return { date, raw };
+}
+
+/** Decode a string node, covering the string types that appear in X.509 names. */
+function derStringValue(node) {
+  const c = derContent(node);
+  if (node.tag === TAG.BMPString) {
+    let s = '';
+    for (let i = 0; i + 1 < c.length; i += 2) s += String.fromCharCode((c[i] << 8) | c[i + 1]);
+    return s;
+  }
+  return new TextDecoder('utf-8').decode(c);
+}
+
+/* ===== tsp.js ================================================== */
+/* tsp.js: RFC 3161 request construction and response parsing, plus the slice of
+ * CMS and X.509 needed to read a timestamp token.
+ *
+ * Every structure here is read from the token itself. Nothing is assumed from the
+ * request, because a response that merely echoes what we sent proves nothing: the
+ * point of parsing is to find out what the authority actually said.
+ */
+
+
+const OID = {
+  sha256: '2.16.840.1.101.3.4.2.1',
+  sha384: '2.16.840.1.101.3.4.2.2',
+  sha512: '2.16.840.1.101.3.4.2.3',
+  signedData: '1.2.840.113549.1.7.2',
+  ctTSTInfo: '1.2.840.113549.1.9.16.1.4',
+  contentType: '1.2.840.113549.1.9.3',
+  messageDigest: '1.2.840.113549.1.9.4',
+  signingCertificate: '1.2.840.113549.1.9.16.2.12',
+  signingCertificateV2: '1.2.840.113549.1.9.16.2.47',
+  rsaEncryption: '1.2.840.113549.1.1.1',
+  sha256WithRSA: '1.2.840.113549.1.1.11',
+  sha384WithRSA: '1.2.840.113549.1.1.12',
+  sha512WithRSA: '1.2.840.113549.1.1.13',
+  rsassaPss: '1.2.840.113549.1.1.10',
+  ecPublicKey: '1.2.840.10045.2.1',
+  ecdsaSha256: '1.2.840.10045.4.3.2',
+  ecdsaSha384: '1.2.840.10045.4.3.3',
+  ecdsaSha512: '1.2.840.10045.4.3.4',
+  p256: '1.2.840.10045.3.1.7',
+  p384: '1.3.132.0.34',
+  p521: '1.3.132.0.35',
+};
+
+const HASH_BY_OID = {
+  [OID.sha256]: 'SHA-256',
+  [OID.sha384]: 'SHA-384',
+  [OID.sha512]: 'SHA-512',
+};
+
+/** Human names for the attribute OIDs that appear in an X.509 Name. */
+const NAME_OID = {
+  '2.5.4.3': 'CN', '2.5.4.6': 'C', '2.5.4.7': 'L', '2.5.4.8': 'ST',
+  '2.5.4.10': 'O', '2.5.4.11': 'OU', '2.5.4.5': 'serialNumber',
+  '2.5.4.13': 'description', '1.2.840.113549.1.9.1': 'emailAddress',
+};
+
+/* ------------------------------------------------------- request building -- */
+
+/**
+ * Build a DER TimeStampReq.
+ *
+ * Produces bytes identical to:
+ *   openssl ts -query -data FILE -sha256 -cert -out request.tsq
+ * which the test suite asserts against a real openssl artifact. Byte identity is
+ * not vanity: it means an examiner can regenerate our request with the standard
+ * tool and get the same file, so the request is reproducible rather than trusted.
+ *
+ * certReq defaults to true. Omitting it yields a smaller token and a future
+ * problem, because the signing certificate needed in year six is the one that was
+ * current in year one.
+ */
+function buildTimeStampReq({ digest, hashOid = OID.sha256, nonce, certReq = true }) {
+  const messageImprint = derSeq(
+    derSeq(derOid(hashOid), derNull()),
+    derOctetString(digest),
+  );
+
+  const parts = [derIntegerFromNumber(1), messageImprint];
+  if (nonce) parts.push(derInteger(nonce));
+  if (certReq) parts.push(derBool(true));
+  return derSeq(...parts);
+}
+
+/** 64 bits from the platform CSPRNG. Fresh for every submission, never reused. */
+function generateNonce() {
+  const n = new Uint8Array(8);
+  crypto.getRandomValues(n);
+  // Guarantee a non-zero high byte so the nonce is always a full 8 significant
+  // bytes after DER minimal-length encoding. Purely cosmetic for matching openssl.
+  if (n[0] === 0) n[0] = 1;
+  return n;
+}
+
+/* ------------------------------------------------------ response parsing --- */
+
+const PKI_STATUS = {
+  0: 'granted',
+  1: 'grantedWithMods',
+  2: 'rejection',
+  3: 'waiting',
+  4: 'revocationWarning',
+  5: 'revocationNotification',
+};
+
+const FAIL_INFO_BITS = {
+  0: 'badAlg', 2: 'badRequest', 5: 'badDataFormat', 14: 'timeNotAvailable',
+  15: 'unacceptedPolicy', 16: 'unacceptedExtension', 17: 'addInfoNotAvailable',
+  25: 'systemFailure',
+};
+
+/**
+ * Parse a TimeStampResp.
+ *
+ * Returns { statusCode, statusName, statusStrings, failInfo, granted, token }.
+ * `token` is null when the authority refused. A refusal is a result, not an error:
+ * the caller reports it and packages it, and never silently drops the authority.
+ */
+function parseTimeStampResp(bytes) {
+  const root = derParse(bytes);
+  if (root.tag !== TAG.SEQUENCE) throw new Error('TimeStampResp: expected a SEQUENCE at the root');
+  const kids = derChildren(root);
+  if (kids.length < 1) throw new Error('TimeStampResp: empty');
+
+  const statusInfo = derChildren(kids[0]);
+  const statusCode = derIntToNumber(statusInfo[0]);
+  const statusName = PKI_STATUS[statusCode] ?? `unknown(${statusCode})`;
+
+  const statusStrings = [];
+  let failInfo = null;
+  for (let i = 1; i < statusInfo.length; i++) {
+    const n = statusInfo[i];
+    if (n.tag === TAG.SEQUENCE) {
+      for (const s of derChildren(n)) statusStrings.push(derStringValue(s));
+    } else if (n.tag === TAG.BIT_STRING) {
+      failInfo = decodeFailInfo(n);
+    }
+  }
+
+  const granted = statusCode === 0 || statusCode === 1;
+  const tokenNode = kids.length > 1 ? kids[1] : null;
+
+  return {
+    statusCode,
+    statusName,
+    statusStrings,
+    failInfo,
+    granted,
+    token: tokenNode ? parseTimeStampToken(derOuter(tokenNode)) : null,
+    tokenBytes: tokenNode ? derOuter(tokenNode).slice() : null,
+  };
+}
+
+function decodeFailInfo(node) {
+  const c = derContent(node);
+  if (c.length < 2) return [];
+  const unused = c[0];
+  const names = [];
+  const totalBits = (c.length - 1) * 8 - unused;
+  for (let bit = 0; bit < totalBits; bit++) {
+    const byte = c[1 + (bit >> 3)];
+    if (byte & (0x80 >> (bit & 7))) names.push(FAIL_INFO_BITS[bit] ?? `bit${bit}`);
+  }
+  return names;
+}
+
+/**
+ * Parse a TimeStampToken, which is a CMS ContentInfo wrapping SignedData whose
+ * encapsulated content is a TSTInfo.
+ */
+function parseTimeStampToken(bytes) {
+  const ci = derParse(bytes);
+  const ciKids = derChildren(ci);
+  const contentType = derOidToString(ciKids[0]);
+  if (contentType !== OID.signedData) {
+    throw new Error(`TimeStampToken: expected CMS SignedData, found OID ${contentType}`);
+  }
+
+  const explicit = ciKids[1];
+  if (!derIsContext(explicit, 0)) throw new Error('TimeStampToken: missing [0] content');
+  const sd = derChildren(explicit)[0];
+  const sdKids = derChildren(sd);
+
+  // version, digestAlgorithms, encapContentInfo, then optional [0] certs, [1] crls, then signerInfos.
+  const encap = sdKids[2];
+  const encapKids = derChildren(encap);
+  const eContentType = derOidToString(encapKids[0]);
+  if (eContentType !== OID.ctTSTInfo) {
+    throw new Error(`TimeStampToken: encapsulated content is ${eContentType}, not id-ct-TSTInfo`);
+  }
+  const eContentOctets = derChildren(encapKids[1])[0];
+  const tstInfoBytes = derContent(eContentOctets);
+
+  let certs = [];
+  let signerInfos = null;
+  for (let i = 3; i < sdKids.length; i++) {
+    const n = sdKids[i];
+    if (derIsContext(n, 0)) {
+      certs = derChildren(n)
+        .filter((c) => c.tag === TAG.SEQUENCE) // skip [1]/[2] attribute-certificate forms
+        .map((c) => parseCertificate(derOuter(c).slice()));
+    } else if (n.tag === TAG.SET) {
+      signerInfos = derChildren(n);
+    }
+  }
+  if (!signerInfos || signerInfos.length === 0) throw new Error('TimeStampToken: no SignerInfo present');
+
+  return {
+    tstInfo: parseTSTInfo(tstInfoBytes),
+    tstInfoBytes: tstInfoBytes.slice(),
+    certificates: certs,
+    signer: parseSignerInfo(signerInfos[0]),
+    signerCount: signerInfos.length,
+  };
+}
+
+/**
+ * TSTInfo ::= SEQUENCE {
+ *   version, policy, messageImprint, serialNumber, genTime,
+ *   accuracy OPTIONAL, ordering DEFAULT FALSE, nonce OPTIONAL,
+ *   tsa [0] OPTIONAL, extensions [1] OPTIONAL }
+ *
+ * Optional fields are reported as null, never as a blank or a default. The
+ * difference between "DigiCert omitted the TSA field" and "the TSA field was empty"
+ * is the whole subject of the post this tool comes from.
+ */
+function parseTSTInfo(bytes) {
+  const kids = derChildren(derParse(bytes));
+  let i = 0;
+
+  const version = derIntToNumber(kids[i++]);
+  const policy = derOidToString(kids[i++]);
+
+  const miKids = derChildren(kids[i++]);
+  const hashOid = derOidToString(derChildren(miKids[0])[0]);
+  const imprint = derContent(miKids[1]).slice();
+
+  const serialHex = derIntToHex(kids[i++]);
+  const gt = derGeneralizedTime(kids[i++]);
+
+  let accuracy = null;
+  let ordering = false;
+  let nonceHex = null;
+  let tsaName = null;
+
+  for (; i < kids.length; i++) {
+    const n = kids[i];
+    if (n.tag === TAG.SEQUENCE) accuracy = parseAccuracy(n);
+    else if (n.tag === TAG.BOOLEAN) ordering = derContent(n)[0] !== 0;
+    else if (n.tag === TAG.INTEGER) nonceHex = derIntToHex(n);
+    else if (derIsContext(n, 0)) tsaName = parseGeneralName(derChildren(n)[0]);
+  }
+
+  return {
+    version,
+    policy,
+    hashOid,
+    hashAlgorithm: HASH_BY_OID[hashOid] ?? hashOid,
+    imprint,
+    imprintHex: toHex(imprint),
+    serialHex,
+    genTime: gt.date,
+    genTimeRaw: gt.raw,
+    accuracy,
+    ordering,
+    nonceHex,
+    tsaName,
+  };
+}
+
+function parseAccuracy(node) {
+  const out = { seconds: null, millis: null, micros: null };
+  for (const k of derChildren(node)) {
+    if (k.tag === TAG.INTEGER) out.seconds = derIntToNumber(k);
+    else if (derIsContext(k, 0)) out.millis = beToNumber(derContent(k));
+    else if (derIsContext(k, 1)) out.micros = beToNumber(derContent(k));
+  }
+  return out;
+}
+
+function beToNumber(bytes) {
+  let v = 0;
+  for (const b of bytes) v = v * 256 + b;
+  return v;
+}
+
+/** GeneralName, of which only directoryName [4] appears in practice for a TSA field. */
+function parseGeneralName(node) {
+  if (derIsContext(node, 4)) {
+    const inner = derChildren(node)[0];
+    return { type: 'directoryName', value: parseName(inner) };
+  }
+  if (derIsContext(node, 1) || derIsContext(node, 2) || derIsContext(node, 6)) {
+    return { type: 'name', value: new TextDecoder().decode(derContent(node)) };
+  }
+  return { type: `context-${node.tag & 0x1f}`, value: '(unparsed form)' };
+}
+
+function parseSignerInfo(node) {
+  const kids = derChildren(node);
+  let i = 0;
+  const version = derIntToNumber(kids[i++]);
+
+  let issuerAndSerial = null;
+  let subjectKeyId = null;
+  const sid = kids[i++];
+  if (sid.tag === TAG.SEQUENCE) {
+    const sk = derChildren(sid);
+    issuerAndSerial = { issuer: parseName(sk[0]), serialHex: derIntToHex(sk[1]) };
+  } else if (derIsContext(sid, 0)) {
+    subjectKeyId = toHex(derContent(sid));
+  }
+
+  const digestAlgOid = derOidToString(derChildren(kids[i++])[0]);
+
+  let signedAttrsNode = null;
+  if (derIsContext(kids[i], 0)) signedAttrsNode = kids[i++];
+
+  const sigAlgOid = derOidToString(derChildren(kids[i++])[0]);
+  const signature = derContent(kids[i++]).slice();
+
+  return {
+    version,
+    issuerAndSerial,
+    subjectKeyId,
+    digestAlgOid,
+    digestAlgorithm: HASH_BY_OID[digestAlgOid] ?? digestAlgOid,
+    sigAlgOid,
+    signature,
+    signedAttrs: signedAttrsNode ? readSignedAttrs(signedAttrsNode) : null,
+    /* The exact original bytes of the [0] IMPLICIT signedAttrs, tag included.
+     * Kept because verification must re-tag these as SET OF (0x31) per RFC 5652
+     * section 5.4 and hash the result; re-encoding the contents instead would
+     * produce different bytes and verify against nothing. */
+    signedAttrsRaw: signedAttrsNode ? derOuter(signedAttrsNode).slice() : null,
+  };
+}
+
+function readSignedAttrs(node) {
+  const out = { contentType: null, messageDigest: null, hasSigningCertificate: false, all: [] };
+  for (const attr of derChildren(node)) {
+    const ak = derChildren(attr);
+    const type = derOidToString(ak[0]);
+    const values = derChildren(ak[1]);
+    out.all.push(type);
+    if (type === OID.contentType && values.length) out.contentType = derOidToString(values[0]);
+    else if (type === OID.messageDigest && values.length) out.messageDigest = derContent(values[0]).slice();
+    else if (type === OID.signingCertificate || type === OID.signingCertificateV2) out.hasSigningCertificate = true;
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------- X.509 ------- */
+
+/**
+ * Parse enough of a certificate to describe it and to verify a signature with it.
+ * Extensions are not parsed: this tool makes no path-validation claim, so reading
+ * basicConstraints or EKU would only invite one.
+ */
+function parseCertificate(der) {
+  const cert = derParse(der);
+  const ck = derChildren(cert);
+  const tbs = ck[0];
+  const tk = derChildren(tbs);
+
+  let i = 0;
+  let version = 1;
+  if (derIsContext(tk[0], 0)) {
+    version = derIntToNumber(derChildren(tk[0])[0]) + 1;
+    i = 1;
+  }
+
+  const serialHex = derIntToHex(tk[i++]);
+  const innerSigAlg = derOidToString(derChildren(tk[i++])[0]);
+  const issuer = parseName(tk[i++]);
+
+  const validityKids = derChildren(tk[i++]);
+  const notBefore = parseTime(validityKids[0]);
+  const notAfter = parseTime(validityKids[1]);
+
+  const subject = parseName(tk[i++]);
+  const spkiNode = tk[i++];
+
+  const spkiKids = derChildren(spkiNode);
+  const keyAlgOid = derOidToString(derChildren(spkiKids[0])[0]);
+  let curveOid = null;
+  if (keyAlgOid === OID.ecPublicKey) {
+    const params = derChildren(spkiKids[0])[1];
+    if (params && params.tag === TAG.OID) curveOid = derOidToString(params);
+  }
+  // RSA modulus size, for the report. The BIT STRING has a leading unused-bits byte.
+  let keyBits = null;
+  if (keyAlgOid === OID.rsaEncryption) {
+    const bs = derContent(spkiKids[1]).subarray(1);
+    const rsaKey = derChildren(derParse(bs))[0];
+    let m = derContent(rsaKey);
+    let z = 0;
+    while (z < m.length && m[z] === 0) z++;
+    keyBits = (m.length - z) * 8;
+  }
+
+  return {
+    version,
+    serialHex,
+    innerSigAlg,
+    issuer,
+    subject,
+    notBefore,
+    notAfter,
+    keyAlgOid,
+    curveOid,
+    keyBits,
+    spkiDer: derOuter(spkiNode).slice(),
+    der: der instanceof Uint8Array ? der : new Uint8Array(der),
+  };
+}
+
+function parseTime(node) {
+  if (node.tag === TAG.GeneralizedTime) return derGeneralizedTime(node).date;
+  const raw = new TextDecoder('ascii').decode(derContent(node));
+  const m = raw.match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/);
+  if (!m) throw new Error(`X.509: unsupported UTCTime form: ${raw}`);
+  const yy = +m[1];
+  const year = yy >= 50 ? 1900 + yy : 2000 + yy;
+  return new Date(Date.UTC(year, +m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
+}
+
+/** Render an X.509 Name as an RFC 4514 style string, outermost RDN last. */
+function parseName(node) {
+  const parts = [];
+  for (const rdn of derChildren(node)) {
+    for (const atv of derChildren(rdn)) {
+      const ak = derChildren(atv);
+      const oidStr = derOidToString(ak[0]);
+      const label = NAME_OID[oidStr] ?? oidStr;
+      parts.push(`${label}=${derStringValue(ak[1])}`);
+    }
+  }
+  return parts.join(', ');
+}
+
+/** Find the certificate a SignerInfo points at, by issuer+serial or by SKI. */
+function findSignerCertificate(token) {
+  const { signer, certificates } = token;
+  if (signer.issuerAndSerial) {
+    const wantSerial = signer.issuerAndSerial.serialHex.toLowerCase();
+    const wantIssuer = signer.issuerAndSerial.issuer;
+    const hit = certificates.find(
+      (c) => c.serialHex.toLowerCase() === wantSerial && c.issuer === wantIssuer,
+    );
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** DER to PEM. Used for the chain files inside the package. */
+function toPem(der, label = 'CERTIFICATE') {
+  let b64 = '';
+  const chunk = 0x8000;
+  let bin = '';
+  for (let i = 0; i < der.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, der.subarray(i, i + chunk));
+  }
+  b64 = btoa(bin);
+  const lines = b64.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----\n`;
+}
+
+/* namespace object for `import * as tsp from "./tsp.js"`, generated by build.sh */
+const tsp = { OID, buildTimeStampReq, findSignerCertificate, generateNonce, parseCertificate, parseName, parseTSTInfo, parseTimeStampResp, parseTimeStampToken, sha256, toHex, toPem };
+
+/* ===== verify.js ================================================== */
+/* verify.js: the itemised verification pass.
+ *
+ * DESIGN RULE, and the reason there is no single green badge anywhere in this tool:
+ * every check reports its own result and its own basis. A verdict whose basis the
+ * reader cannot see is the exact defect that got a sibling forensic tool barred from
+ * client work, and a green tick that quietly covers an unperformed check is worse
+ * than no check at all.
+ *
+ * Three outcomes, never two:
+ *   PASS           the check ran and succeeded
+ *   FAIL           the check ran and failed
+ *   NOT_PERFORMED  the check did not run, with the reason stated
+ *
+ * NOT_PERFORMED is never collapsed into PASS. The most important instance is chain
+ * validation: a browser cannot reach the operating system trust store, by design, so
+ * this tool cannot tell you the signing certificate chains to a root you trust. It
+ * says so, and it hands you the openssl command that settles it.
+ */
+
+
+const PASS = 'PASS';
+const FAIL = 'FAIL';
+const NOT_PERFORMED = 'NOT_PERFORMED';
+
+const check = (id, label, result, detail, basis) => ({ id, label, result, detail, basis });
+
+const CURVE_BY_OID = {
+  [tsp.OID.p256]: { name: 'P-256', size: 32 },
+  [tsp.OID.p384]: { name: 'P-384', size: 48 },
+  [tsp.OID.p521]: { name: 'P-521', size: 66 },
+};
+
+const ECDSA_HASH_BY_SIG_OID = {
+  [tsp.OID.ecdsaSha256]: 'SHA-256',
+  [tsp.OID.ecdsaSha384]: 'SHA-384',
+  [tsp.OID.ecdsaSha512]: 'SHA-512',
+};
+
+/**
+ * Run every check for one authority's response.
+ *
+ * @param resp      parsed TimeStampResp
+ * @param expected  { digest, digestHex, nonceHex } as SENT, from our own state
+ * @returns { checks[], summary }
+ */
+async function verifyResponse(resp, expected) {
+  const checks = [];
+
+  /* 1. Did the authority grant it at all. */
+  checks.push(check(
+    'status',
+    'Authority granted the request',
+    resp.granted ? PASS : FAIL,
+    `PKIStatus ${resp.statusCode} (${resp.statusName})` +
+      (resp.statusStrings.length ? `: ${resp.statusStrings.join('; ')}` : '') +
+      (resp.failInfo?.length ? ` [failInfo: ${resp.failInfo.join(', ')}]` : ''),
+    'RFC 3161 section 2.4.2, PKIStatusInfo',
+  ));
+
+  if (!resp.token) {
+    checks.push(check('token', 'Timestamp token present', FAIL,
+      'The authority returned no token.', 'RFC 3161 section 2.4.2'));
+    return { checks, summary: summarize(checks) };
+  }
+
+  const t = resp.token.tstInfo;
+
+  /* 2. THE check. Does the token commit to OUR bytes.
+   *    Everything else in the package is worthless if this fails, and a malicious
+   *    or broken relay returning someone else's valid token is caught precisely
+   *    here, by comparing against a hash this browser computed locally. */
+  const imprintMatches = t.imprintHex === expected.digestHex;
+  checks.push(check(
+    'imprint',
+    'Token commits to this exact document',
+    imprintMatches ? PASS : FAIL,
+    imprintMatches
+      ? `messageImprint ${t.imprintHex} equals the digest computed from your file.`
+      : `MISMATCH. Token says ${t.imprintHex}; your file hashes to ${expected.digestHex}. ` +
+        'This token does not belong to this document.',
+    'RFC 3161 section 2.4.2, TSTInfo.messageImprint',
+  ));
+
+  /* 3. Replay defence. Only meaningful because we keep the request file. */
+  if (expected.nonceHex) {
+    const nonceMatches = normalizeHex(t.nonceHex) === normalizeHex(expected.nonceHex);
+    checks.push(check(
+      'nonce',
+      'Nonce echoed back unchanged',
+      t.nonceHex == null ? FAIL : (nonceMatches ? PASS : FAIL),
+      t.nonceHex == null
+        ? 'The authority returned no nonce, so this reply cannot be tied to this request.'
+        : (nonceMatches
+            ? `Nonce 0x${t.nonceHex.toUpperCase()} matches the value sent.`
+            : `MISMATCH. Sent 0x${expected.nonceHex.toUpperCase()}, received 0x${t.nonceHex.toUpperCase()}.`),
+      'RFC 3161 section 2.4.1; proves this reply answers this request, not a replayed one',
+    ));
+  }
+
+  /* 4. Internal CMS consistency: do the signed attributes actually cover the
+   *    TSTInfo we just read? Without this, a signature could be valid over
+   *    attributes describing a different payload. */
+  const sa = resp.token.signer.signedAttrs;
+  if (!sa) {
+    checks.push(check('signedattrs', 'Signed attributes present', FAIL,
+      'SignerInfo carries no signedAttrs, so the signature does not cover a messageDigest.',
+      'RFC 5652 section 5.3'));
+  } else {
+    const alg = resp.token.signer.digestAlgorithm;
+    let digestOk = false;
+    let detail;
+    try {
+      const computed = new Uint8Array(await crypto.subtle.digest(alg, resp.token.tstInfoBytes));
+      digestOk = sa.messageDigest != null && attrBytesEqual(computed, sa.messageDigest);
+      detail = digestOk
+        ? `messageDigest attribute equals ${alg} of the TSTInfo content.`
+        : `messageDigest attribute does not equal ${alg} of the TSTInfo content.`;
+    } catch (e) {
+      detail = `Could not compute ${alg}: ${e.message}`;
+    }
+    checks.push(check(
+      'messagedigest',
+      'Signed attributes cover this token content',
+      digestOk ? PASS : FAIL,
+      detail,
+      'RFC 5652 section 5.4, message-digest attribute',
+    ));
+
+    checks.push(check(
+      'contenttype',
+      'Content type is a timestamp token',
+      sa.contentType === tsp.OID.ctTSTInfo ? PASS : FAIL,
+      `contentType attribute is ${sa.contentType ?? 'absent'} (expected id-ct-TSTInfo ${tsp.OID.ctTSTInfo}).`,
+      'RFC 3161 section 2.4.2',
+    ));
+  }
+
+  /* 5. The cryptographic signature itself. */
+  const signerCert = tsp.findSignerCertificate(resp.token);
+  if (!signerCert) {
+    checks.push(check('signature', 'Signature verified against the signing certificate', NOT_PERFORMED,
+      'The signing certificate is not embedded in the token, so there is no public key to check against. ' +
+      'This happens when certReq was not set at request time.',
+      'RFC 5652 section 5.3, SignerIdentifier'));
+  } else {
+    checks.push(await verifySignature(resp.token, signerCert));
+  }
+
+  /* 6. The honest gap, stated as loudly as the passes. */
+  checks.push(check(
+    'chain',
+    'Certificate chains to a trusted root',
+    NOT_PERFORMED,
+    'A web browser does not expose the operating system trust store to JavaScript, so this ' +
+    'page cannot perform path validation. This is a limit of the browser, not a property of ' +
+    'your token. The verification commands saved in this package settle it with openssl, and ' +
+    'they must be run before this timestamp is relied upon.',
+    'Web Cryptography API defines primitives only; it has no certificate or trust model',
+  ));
+
+  /* 7. Informational: when the signing certificate expires. Not a failure today,
+   *    but the date that decides when the package must be re-timestamped. */
+  checks.push(check(
+    'certvalidity',
+    'Signing certificate validity window',
+    PASS,
+    `Valid from ${signerCert ? signerCert.notBefore.toISOString() : 'unknown'} to ` +
+    `${signerCert ? signerCert.notAfter.toISOString() : 'unknown'}. Re-timestamp this package ` +
+    'before that end date if the evidence must remain checkable beyond it.',
+    'Informational; not a verification result',
+  ));
+
+  return { checks, summary: summarize(checks) };
+}
+
+/**
+ * Verify the CMS signature over the signed attributes.
+ *
+ * Two details that are easy to get wrong and both produce a confident false FAIL:
+ *
+ * 1. The bytes signed are the signedAttrs re-tagged as SET OF (0x31). They travel in
+ *    the token as [0] IMPLICIT (0xA0). RFC 5652 section 5.4 is explicit that the
+ *    SET OF encoding is what gets hashed. We swap the single tag byte on the
+ *    ORIGINAL bytes rather than re-encoding the structure, because a re-encode could
+ *    legitimately differ and would then verify against nothing.
+ *
+ * 2. ECDSA signatures in CMS are DER SEQUENCE { r, s }. WebCrypto wants the raw
+ *    fixed-width r || s concatenation. Passing the DER through unconverted fails
+ *    silently, as a wrong answer rather than an error.
+ */
+async function verifySignature(token, signerCert) {
+  const signer = token.signer;
+  const id = 'signature';
+  const label = 'Signature verified against the signing certificate';
+
+  try {
+    const signedBytes = retagAsSetOf(signer.signedAttrsRaw);
+    if (!signedBytes) {
+      return check(id, label, NOT_PERFORMED,
+        'No signed attributes to verify.', 'RFC 5652 section 5.4');
+    }
+
+    const hash = signer.digestAlgorithm;
+    let algorithm, importAlgo, signature = signer.signature;
+
+    if (signerCert.keyAlgOid === tsp.OID.rsaEncryption) {
+      importAlgo = { name: 'RSASSA-PKCS1-v1_5', hash };
+      algorithm = { name: 'RSASSA-PKCS1-v1_5' };
+    } else if (signerCert.keyAlgOid === tsp.OID.ecPublicKey) {
+      const curve = CURVE_BY_OID[signerCert.curveOid];
+      if (!curve) {
+        return check(id, label, NOT_PERFORMED,
+          `Unsupported elliptic curve ${signerCert.curveOid}. Verify with openssl instead.`,
+          'Web Cryptography API named curves');
+      }
+      const ecHash = ECDSA_HASH_BY_SIG_OID[signer.sigAlgOid] ?? hash;
+      importAlgo = { name: 'ECDSA', namedCurve: curve.name };
+      algorithm = { name: 'ECDSA', hash: ecHash };
+      signature = derEcdsaToRaw(signer.signature, curve.size);
+    } else {
+      return check(id, label, NOT_PERFORMED,
+        `Unsupported public key algorithm ${signerCert.keyAlgOid}. Verify with openssl instead.`,
+        'Web Cryptography API supported algorithms');
+    }
+
+    const key = await crypto.subtle.importKey('spki', signerCert.spkiDer, importAlgo, false, ['verify']);
+    const valid = await crypto.subtle.verify(algorithm, key, signature, signedBytes);
+
+    const desc = signerCert.keyAlgOid === tsp.OID.rsaEncryption
+      ? `${signerCert.keyBits}-bit RSA, ${hash}`
+      : `ECDSA ${CURVE_BY_OID[signerCert.curveOid].name}, ${algorithm.hash}`;
+
+    return check(id, label, valid ? PASS : FAIL,
+      valid
+        ? `Signature over the signed attributes is valid (${desc}), made by the key in ` +
+          `certificate serial 0x${signerCert.serialHex.toUpperCase()}.`
+        : `Signature over the signed attributes did NOT verify (${desc}). Treat this token as unreliable.`,
+      'RFC 5652 section 5.4, verified with the Web Cryptography API');
+  } catch (e) {
+    return check(id, label, NOT_PERFORMED,
+      `The signature check could not be completed: ${e.message}. Verify with openssl instead.`,
+      'Web Cryptography API threw during verification');
+  }
+}
+
+/** Replace the leading [0] IMPLICIT tag with SET OF, leaving every other byte alone. */
+function retagAsSetOf(raw) {
+  if (!raw || raw.length === 0) return null;
+  const out = raw.slice();
+  out[0] = TAG.SET;
+  return out;
+}
+
+/** DER SEQUENCE { INTEGER r, INTEGER s } to fixed-width r || s. */
+function derEcdsaToRaw(der, size) {
+  const kids = derChildren(derParse(der));
+  if (kids.length !== 2) throw new Error('ECDSA signature: expected SEQUENCE of two INTEGERs');
+  const out = new Uint8Array(size * 2);
+  for (let i = 0; i < 2; i++) {
+    let v = derContent(kids[i]);
+    let s = 0;
+    while (s < v.length - 1 && v[s] === 0x00) s++;   // strip DER sign padding
+    v = v.subarray(s);
+    if (v.length > size) throw new Error('ECDSA signature: component wider than the curve');
+    out.set(v, i * size + (size - v.length));        // left-pad to fixed width
+  }
+  return out;
+}
+
+function summarize(checks) {
+  const counts = { PASS: 0, FAIL: 0, NOT_PERFORMED: 0 };
+  for (const c of checks) counts[c.result]++;
+  return {
+    ...counts,
+    /* Deliberately NOT a boolean "verified". The caller must render the itemised
+     * list; there is no single value here that could be mistaken for a verdict. */
+    anyFailure: counts.FAIL > 0,
+    total: checks.length,
+  };
+}
+
+function normalizeHex(h) {
+  return (h ?? '').toLowerCase().replace(/^0+(?=.)/, '');
+}
+
+function attrBytesEqual(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+  return d === 0;
+}
+
+
+/* ===== zip.js ================================================== */
+/* zip.js: a ZIP writer built for ASiC conformance and for large files.
+ *
+ * WHY HAND-ROLLED rather than a library:
+ *
+ * ETSI EN 319 162-1 Annex A.1 requires, normatively, that the `mimetype` entry is
+ * the FIRST file in the container, is STORED rather than deflated, and carries a
+ * ZERO-LENGTH extra field (the extra field length at offset 28 must be zero). Most
+ * JavaScript zip libraries add an extra field to every entry by default, commonly a
+ * timestamp field. That produces a container that opens perfectly in every unzip
+ * tool on earth and is silently NON-CONFORMANT, so an ASiC validator rejects it.
+ * A failure that looks exactly like success is the kind this project cannot afford,
+ * and controlling the bytes is the only way to be sure.
+ *
+ * Everything is STORED, never deflated. Compression would save little on tokens and
+ * certificates, and it costs byte-fidelity of the document, which is the one thing
+ * this container exists to preserve.
+ *
+ * ZIP64 is emitted when any entry or the archive as a whole crosses 4 GiB. A writer
+ * that ignores this produces a corrupt archive at the boundary with no error, which
+ * is the second failure-shaped-like-success in this file.
+ */
+
+const LOCAL_SIG = 0x04034b50;
+const CENTRAL_SIG = 0x02014b50;
+const EOCD_SIG = 0x06054b50;
+const ZIP64_EOCD_SIG = 0x06064b50;
+const ZIP64_LOCATOR_SIG = 0x07064b50;
+
+const U32_MAX = 0xffffffff;
+const U16_MAX = 0xffff;
+const CRC_CHUNK = 4 * 1024 * 1024;
+
+/* ---------------------------------------------------------------- CRC-32 --- */
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+class Crc32 {
+  constructor() { this.c = 0xffffffff; }
+  update(bytes) {
+    let c = this.c;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    this.c = c;
+    return this;
+  }
+  digest() { return (this.c ^ 0xffffffff) >>> 0; }
+}
+
+function crc32(bytes) { return new Crc32().update(bytes).digest(); }
+
+/* ------------------------------------------------------------- writing ---- */
+
+function u16(v) { return Uint8Array.of(v & 0xff, (v >>> 8) & 0xff); }
+function u32(v) { return Uint8Array.of(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff); }
+
+/** 64-bit little-endian, built from a JS number (safe to 2^53, far beyond need). */
+function u64(v) {
+  const out = new Uint8Array(8);
+  let n = v;
+  for (let i = 0; i < 8; i++) { out[i] = n & 0xff; n = Math.floor(n / 256); }
+  return out;
+}
+
+function cat(parts) {
+  let len = 0;
+  for (const p of parts) len += p.length;
+  const out = new Uint8Array(len);
+  let off = 0;
+  for (const p of parts) { out.set(p, off); off += p.length; }
+  return out;
+}
+
+/** MS-DOS date and time. Second resolution is 2s; this is metadata, never evidence. */
+function dosDateTime(date) {
+  const y = Math.max(1980, date.getUTCFullYear());
+  const time = ((date.getUTCHours() & 0x1f) << 11) | ((date.getUTCMinutes() & 0x3f) << 5) | ((date.getUTCSeconds() / 2) & 0x1f);
+  const day = (((y - 1980) & 0x7f) << 9) | (((date.getUTCMonth() + 1) & 0x0f) << 5) | (date.getUTCDate() & 0x1f);
+  return { time, day };
+}
+
+class ZipWriter {
+  /**
+   * @param fixedDate  Date stamped into every entry. Callers pass the authority's
+   *                   genTime or a stated UTC instant, never the local clock, so the
+   *                   container carries no machine-clock value that a reader could
+   *                   mistake for evidence.
+   */
+  constructor(fixedDate = new Date(Date.UTC(1980, 0, 1, 0, 0, 0))) {
+    this.parts = [];
+    this.entries = [];
+    this.offset = 0;
+    this.date = fixedDate;
+    this.finished = false;
+  }
+
+  get size() { return this.offset; }
+
+  /**
+   * Append one entry.
+   *
+   * @param name       published path inside the archive, UTF-8
+   * @param data       Uint8Array, string, or Blob/File (Blob is streamed, never
+   *                   materialized, so a multi-gigabyte document does not have to
+   *                   fit in memory)
+   * @param opts.noExtraField  refuse to emit any extra field for this entry. Set on
+   *                   `mimetype`; the writer THROWS rather than silently emitting
+   *                   one, because a silent extra field here is exactly the
+   *                   conformance bug this class exists to prevent.
+   */
+  async add(name, data, opts = {}) {
+    if (this.finished) throw new Error('ZipWriter: add() after finish()');
+
+    const nameBytes = new TextEncoder().encode(name);
+    if (nameBytes.length > U16_MAX) throw new Error('ZipWriter: entry name too long');
+
+    let size, crc, payload;
+    if (typeof data === 'string') {
+      payload = new TextEncoder().encode(data);
+      size = payload.length;
+      crc = crc32(payload);
+    } else if (data instanceof Uint8Array) {
+      payload = data;
+      size = data.length;
+      crc = crc32(data);
+    } else if (typeof Blob !== 'undefined' && data instanceof Blob) {
+      payload = data;
+      size = data.size;
+      const h = new Crc32();
+      for (let pos = 0; pos < data.size; pos += CRC_CHUNK) {
+        const slice = data.slice(pos, Math.min(pos + CRC_CHUNK, data.size));
+        h.update(new Uint8Array(await slice.arrayBuffer()));
+      }
+      crc = h.digest();
+    } else {
+      throw new Error('ZipWriter: unsupported data type');
+    }
+
+    const needsZip64 = size > U32_MAX || this.offset > U32_MAX;
+    if (needsZip64 && opts.noExtraField) {
+      throw new Error(`ZipWriter: ${name} needs a ZIP64 extra field but was declared extra-field-free`);
+    }
+
+    const { time, day } = dosDateTime(this.date);
+    const localExtra = needsZip64 ? zip64LocalExtra(size) : new Uint8Array(0);
+
+    const header = cat([
+      u32(LOCAL_SIG),
+      u16(needsZip64 ? 45 : 20),          // version needed
+      u16(0x0800),                        // flags: UTF-8 names
+      u16(0),                             // method 0, STORED
+      u16(time), u16(day),
+      u32(crc),
+      u32(needsZip64 ? U32_MAX : size),   // compressed size
+      u32(needsZip64 ? U32_MAX : size),   // uncompressed size
+      u16(nameBytes.length),
+      u16(localExtra.length),
+      nameBytes,
+      localExtra,
+    ]);
+
+    // Belt and braces on the rule that matters. Offset 28 in a local header is the
+    // extra-field length; ASiC requires it to be zero for `mimetype`.
+    if (opts.noExtraField) {
+      const extraLen = header[28] | (header[29] << 8);
+      if (extraLen !== 0) throw new Error(`ZipWriter: ${name} emitted a non-zero extra field length`);
+    }
+
+    const localOffset = this.offset;
+    this.parts.push(header);
+    this.offset += header.length;
+    this.parts.push(payload);
+    this.offset += size;
+
+    this.entries.push({ nameBytes, crc, size, localOffset, time, day, needsZip64 });
+    return this;
+  }
+
+  /** Finish and return a Blob of the whole archive. */
+  finish(mimeType = 'application/zip') {
+    if (this.finished) throw new Error('ZipWriter: finish() called twice');
+    this.finished = true;
+
+    const centralStart = this.offset;
+    const central = [];
+
+    for (const e of this.entries) {
+      const bigOffset = e.localOffset > U32_MAX;
+      const bigSize = e.size > U32_MAX;
+      const extra = bigOffset || bigSize ? zip64CentralExtra(e.size, e.localOffset, bigSize, bigOffset) : new Uint8Array(0);
+
+      central.push(cat([
+        u32(CENTRAL_SIG),
+        u16(45), u16(bigOffset || bigSize ? 45 : 20),
+        u16(0x0800), u16(0),
+        u16(e.time), u16(e.day),
+        u32(e.crc),
+        u32(bigSize ? U32_MAX : e.size),
+        u32(bigSize ? U32_MAX : e.size),
+        u16(e.nameBytes.length),
+        u16(extra.length),
+        u16(0), u16(0), u16(0),
+        u32(0),
+        u32(bigOffset ? U32_MAX : e.localOffset),
+        e.nameBytes,
+        extra,
+      ]));
+    }
+
+    const centralBytes = cat(central);
+    this.parts.push(centralBytes);
+    this.offset += centralBytes.length;
+
+    const count = this.entries.length;
+    const needsZip64 = count > U16_MAX || centralStart > U32_MAX || centralBytes.length > U32_MAX;
+
+    if (needsZip64) {
+      const z64 = cat([
+        u32(ZIP64_EOCD_SIG),
+        u64(44),                    // size of this record minus 12
+        u16(45), u16(45),
+        u32(0), u32(0),
+        u64(count), u64(count),
+        u64(centralBytes.length),
+        u64(centralStart),
+      ]);
+      const locator = cat([
+        u32(ZIP64_LOCATOR_SIG),
+        u32(0),
+        u64(this.offset),
+        u32(1),
+      ]);
+      this.parts.push(z64, locator);
+      this.offset += z64.length + locator.length;
+    }
+
+    this.parts.push(cat([
+      u32(EOCD_SIG),
+      u16(0), u16(0),
+      u16(needsZip64 ? U16_MAX : count),
+      u16(needsZip64 ? U16_MAX : count),
+      u32(needsZip64 ? U32_MAX : centralBytes.length),
+      u32(needsZip64 ? U32_MAX : centralStart),
+      u16(0),
+    ]));
+
+    return new Blob(this.parts, { type: mimeType });
+  }
+}
+
+function zip64LocalExtra(size) {
+  return cat([u16(0x0001), u16(16), u64(size), u64(size)]);
+}
+
+function zip64CentralExtra(size, offset, bigSize, bigOffset) {
+  const fields = [];
+  if (bigSize) fields.push(u64(size), u64(size));
+  if (bigOffset) fields.push(u64(offset));
+  const body = cat(fields);
+  return cat([u16(0x0001), u16(body.length), body]);
+}
+
+/* ---------------------------------------------------------------- ASiC ----- */
+
+const ASIC_S_MIMETYPE = 'application/vnd.etsi.asic-s+zip';
+const ASIC_E_MIMETYPE = 'application/vnd.etsi.asic-e+zip';
+
+/**
+ * Build one ASiC-S container: a single data file plus a single RFC 3161 token that
+ * applies to it, per ETSI EN 319 162-1 clause 4.3.3.
+ *
+ * Deliberately one container PER AUTHORITY. ASiC-S permits exactly one time
+ * assertion, and the alternative (a single ASiC-E holding all three) makes each
+ * token cover an intermediate manifest rather than the document itself. "The token
+ * covers a manifest which records a digest of your file" is a sentence no
+ * non-technical holder should ever have to defend. Here the token covers the
+ * document's own hash, directly, and each container validates on its own in any
+ * ASiC validator.
+ *
+ * Baseline conformance forbids extra files at the container root, which is why the
+ * narrative report lives in the OUTER archive and never in here.
+ */
+async function buildAsicS({ documentName, documentData, tokenBytes, date }) {
+  const zip = new ZipWriter(date);
+  // First, stored, no extra field. All three properties are normative.
+  await zip.add('mimetype', ASIC_S_MIMETYPE, { noExtraField: true });
+  await zip.add(documentName, documentData);
+  await zip.add('META-INF/timestamp.tst', tokenBytes);
+  return zip.finish(ASIC_S_MIMETYPE);
+}
+
+/**
+ * Structural self-check on a finished ASiC container.
+ *
+ * Reads the bytes back and asserts the three normative properties rather than
+ * trusting that the writer did what it meant to. The tool runs this on its own
+ * output before handing the package over; a container that fails is not shipped.
+ */
+async function checkAsicStructure(blob) {
+  const head = new Uint8Array(await blob.slice(0, 256).arrayBuffer());
+  const findings = [];
+
+  const sigOk = head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04;
+  findings.push({ rule: 'first 4 octets are 50 4B 03 04', ok: sigOk });
+
+  const method = head[8] | (head[9] << 8);
+  findings.push({ rule: 'mimetype is STORED (method 0)', ok: method === 0 });
+
+  const nameLen = head[26] | (head[27] << 8);
+  const extraLen = head[28] | (head[29] << 8);
+  findings.push({ rule: 'mimetype extra field length is zero', ok: extraLen === 0 });
+
+  const name = new TextDecoder().decode(head.subarray(30, 30 + nameLen));
+  findings.push({ rule: 'first entry is named mimetype', ok: name === 'mimetype' });
+
+  const value = new TextDecoder().decode(head.subarray(30 + nameLen, 30 + nameLen + 31));
+  findings.push({
+    rule: 'media type string begins at offset 38',
+    ok: value.startsWith('application/vnd.etsi.asic-'),
+    detail: value,
+  });
+
+  return { ok: findings.every((f) => f.ok), findings };
+}
+
+/* ===== report.js ================================================== */
+/* report.js: the narrative record that travels inside the package.
+ *
+ * This file carries the project's evidentiary discipline, so the rules it follows
+ * are written down here rather than left to whoever edits it next.
+ *
+ * 1. "No later than", never "proves", never "on that date". A token establishes that
+ *    a hash was presented to an authority no later than an instant. Everything else
+ *    a reader might want to conclude lives somewhere else.
+ *
+ * 2. MEASURED and NOT ESTABLISHED are separate, headed sections. A report that
+ *    asserts a conclusion without disclosing its basis is the defect that got a
+ *    sibling forensic tool barred from client work here.
+ *
+ * 3. The report is NARRATIVE. The tokens are the evidence. Anyone can retype this
+ *    file; nobody can forge a token. The package says so in both documents, because
+ *    a reader who relies on the wrong artifact has been misled by our layout.
+ *
+ * 4. Instructions LEAD with re-hashing the document. Substituting a different file
+ *    into the archive is trivial and is detected only by someone who recomputes the
+ *    hash. Ordering is the mitigation.
+ *
+ * 5. No local machine time is ever printed except under an explicit label saying it
+ *    is the operator's clock and is not evidence. The only authoritative times in
+ *    this package are the genTime values inside the tokens.
+ *
+ * 6. Every number is durable or carries its own timestamp.
+ */
+
+
+const TOOL_NAME = 'LTT Timestamp Tool';
+
+const RESULT_WORD = {
+  [PASS]: 'PASS',
+  [FAIL]: 'FAIL',
+  [NOT_PERFORMED]: 'NOT PERFORMED',
+};
+
+/**
+ * @param ctx.version       tool version string, baked at build time
+ * @param ctx.toolSha256    published digest of the page that produced this, or null
+ * @param ctx.mode          'file' or 'hash-only'
+ * @param ctx.transport     'relay' | 'offline' | 'direct'
+ * @param ctx.transportNote human-readable description of the path taken
+ * @param ctx.document      { name, size, digestHex, hashMethod, crossChecked } or null
+ * @param ctx.nonceHex      nonce as sent
+ * @param ctx.requestBytes  the DER TimeStampReq
+ * @param ctx.results       [{ id, name, endpoint, ok, error, resp, checks, summary }]
+ * @param ctx.localClock    Date, printed only under its warning label
+ */
+function buildReport(ctx) {
+  const L = [];
+  const p = (s = '') => L.push(s);
+
+  p(`# Timestamp evidence record`);
+  p();
+  p(`This file describes what was done to produce this package. It is a **narrative**.`);
+  p(`The evidence is the timestamp tokens stored alongside it. Anyone can edit this`);
+  p(`document; nobody can forge a token. Where this document and a token disagree,`);
+  p(`the token is right.`);
+  p();
+
+  /* ---------------------------------------------------- the one-line claim -- */
+  p(`## What this package establishes`);
+  p();
+  if (ctx.mode === 'hash-only') {
+    p(`A fingerprint (SHA-256 digest) was presented to the timestamp authorities listed`);
+    p(`below, and each authority that granted the request signed a statement that it saw`);
+    p(`that fingerprint **no later than** the instant recorded in its token.`);
+    p();
+    p(`**This package does not contain the document.** It was produced in hash-only mode,`);
+    p(`from a fingerprint supplied by the operator. On its own it binds to nothing. It`);
+    p(`acquires meaning only when placed beside a file that hashes to exactly:`);
+    p();
+    p('```');
+    p(ctx.document?.digestHex ?? '(no digest recorded)');
+    p('```');
+    p();
+    p(`This tool did not see that file, could not observe what was hashed, and cannot`);
+    p(`confirm the fingerprint was computed correctly. Preserve the file yourself.`);
+  } else {
+    p(`The document stored in this package hashes to a value that was presented to the`);
+    p(`timestamp authorities listed below. Each authority that granted the request signed`);
+    p(`a statement that it saw that value **no later than** the instant recorded in its`);
+    p(`token, and each token has not been altered since.`);
+  }
+  p();
+
+  /* ------------------------------------------------- re-hash comes first ---- */
+  p(`## Check this yourself, first`);
+  p();
+  p(`Do this before reading anything else. A ZIP file can be edited, and a substituted`);
+  p(`document is detected only by someone who recomputes the hash.`);
+  p();
+  if (ctx.mode === 'hash-only') {
+    p('```');
+    p(`sha256sum <your-preserved-file>`);
+    p('```');
+    p(`That must print, exactly:`);
+  } else {
+    p('```');
+    p(`sha256sum "document/${ctx.document.name}"`);
+    p('```');
+    p(`That must print, exactly:`);
+  }
+  p();
+  p('```');
+  p(ctx.document?.digestHex ?? '(no digest recorded)');
+  p('```');
+  p();
+  p(`If it prints anything else, the document in this package is not the document that`);
+  p(`was timestamped, and nothing else in here applies to it.`);
+  p();
+
+  /* ------------------------------------------------------------ the facts -- */
+  p(`## MEASURED`);
+  p();
+  p(`Everything in this section was observed directly and can be re-derived from the`);
+  p(`files in this package using the commands given later.`);
+  p();
+
+  if (ctx.mode !== 'hash-only') {
+    p(`### The document`);
+    p();
+    p(`- **Name as supplied:** \`${ctx.document.name}\``);
+    p(`- **Size:** ${ctx.document.size} bytes`);
+    p(`- **SHA-256:** \`${ctx.document.digestHex}\``);
+    p(`- **How it was hashed:** ${describeHashMethod(ctx.document)}`);
+    p();
+    p(`The file was hashed inside the operator's web browser. Its contents were never`);
+    p(`transmitted. Only the 32-byte digest above left the machine.`);
+    p();
+  }
+
+  p(`### The request`);
+  p();
+  p(`- **Nonce:** \`0x${(ctx.nonceHex ?? '').toUpperCase()}\``);
+  p(`- **Request size:** ${ctx.requestBytes.length} bytes`);
+  p(`- **Certificates requested:** yes (certReq set, so each token carries its signing chain)`);
+  p();
+  p(`The nonce is a random value generated for this request alone. An authority copies`);
+  p(`it back verbatim, which is what ties a reply to *this* request rather than to a`);
+  p(`reply replayed from some earlier one. The request file \`request/request.tsq\` is`);
+  p(`preserved in this package because the nonce cannot be checked without it.`);
+  p();
+
+  p(`### What each authority returned`);
+  p();
+  p(`| Authority | Status | Time stamped (UTC) | Policy | Serial |`);
+  p(`|---|---|---|---|---|`);
+  for (const r of ctx.results) {
+    if (!r.ok || !r.resp?.token) {
+      p(`| ${r.name} | **${r.ok ? r.resp?.statusName ?? 'no token' : 'NOT OBTAINED'}** | not applicable | not applicable | not applicable |`);
+      continue;
+    }
+    const t = r.resp.token.tstInfo;
+    p(`| ${r.name} | ${r.resp.statusName} | ${t.genTimeRaw} | \`${t.policy}\` | \`0x${t.serialHex.toUpperCase()}\` |`);
+  }
+  p();
+
+  const failures = ctx.results.filter((r) => !r.ok || !r.resp?.token);
+  if (failures.length) {
+    p(`**${failures.length} of ${ctx.results.length} authorities did not produce a token.**`);
+    p(`They are listed here rather than omitted, because a package that quietly ships`);
+    p(`two tokens where three were requested misrepresents what was attempted.`);
+    p();
+    for (const f of failures) {
+      p(`- **${f.name}** (\`${f.endpoint}\`): ${f.error ?? f.resp?.statusName ?? 'no token returned'}`);
+    }
+    p();
+  }
+
+  p(`### Field-by-field, per authority`);
+  p();
+  for (const r of ctx.results) {
+    p(`#### ${r.name}`);
+    p();
+    p(`- **Endpoint:** \`${r.endpoint}\``);
+    if (!r.ok || !r.resp?.token) {
+      p(`- **Result:** no token obtained. ${r.error ?? ''}`);
+      p();
+      continue;
+    }
+    const t = r.resp.token.tstInfo;
+    const signerCert = tsp.findSignerCertificate(r.resp.token);
+    p(`- **Status:** ${r.resp.statusName} (PKIStatus ${r.resp.statusCode})`);
+    p(`- **genTime:** \`${t.genTimeRaw}\``);
+    p(`- **Message imprint:** \`${t.imprintHex}\``);
+    p(`- **Hash algorithm:** ${t.hashAlgorithm}`);
+    p(`- **Policy OID:** \`${t.policy}\``);
+    p(`- **Serial number:** \`0x${t.serialHex.toUpperCase()}\``);
+    p(`- **Nonce returned:** ${t.nonceHex ? `\`0x${t.nonceHex.toUpperCase()}\`` : '**ABSENT**'}`);
+    p(`- **Accuracy:** ${formatAccuracy(t.accuracy)}`);
+    p(`- **Ordering:** ${t.ordering}`);
+    p(`- **TSA field:** ${t.tsaName ? `\`${t.tsaName.value}\`` : '**ABSENT** (optional in RFC 3161; the binding identification is the signing certificate)'}`);
+    p(`- **Certificates embedded:** ${r.resp.token.certificates.length}`);
+    p(`- **Self-signed root included in the token:** ${chainHasSelfSignedRoot(r.resp.token) ? 'yes' : '**no**'}` +
+      ` (decides which trust source verifies this token; see the commands below)`);
+    if (signerCert) {
+      p(`- **Signing certificate:** \`${signerCert.subject}\``);
+      p(`- **Issued by:** \`${signerCert.issuer}\``);
+      p(`- **Valid:** ${signerCert.notBefore.toISOString()} to **${signerCert.notAfter.toISOString()}**`);
+      p(`- **Key:** ${signerCert.keyBits ? `${signerCert.keyBits}-bit RSA` : `EC ${signerCert.curveOid}`}`);
+      p(`- **Signature digest:** ${r.resp.token.signer.digestAlgorithm}`);
+    }
+    p();
+    p(`Verification checks run by this tool:`);
+    p();
+    p(`| Check | Result | Basis |`);
+    p(`|---|---|---|`);
+    for (const c of r.checks) {
+      p(`| ${c.label} | **${RESULT_WORD[c.result]}** | ${c.basis} |`);
+    }
+    p();
+    for (const c of r.checks) {
+      if (c.result !== PASS) p(`- **${c.label} (${RESULT_WORD[c.result]}):** ${c.detail}`);
+    }
+    p();
+  }
+
+  /* ----------------------------------------------- the disagreement table -- */
+  const withTokens = ctx.results.filter((r) => r.ok && r.resp?.token);
+  if (withTokens.length > 1) {
+    p(`### Do the authorities agree`);
+    p();
+    const times = withTokens.map((r) => r.resp.token.tstInfo.genTime.getTime());
+    const spread = Math.max(...times) - Math.min(...times);
+    p(`The recorded times span **${spread} milliseconds** across ${withTokens.length} authorities.`);
+    p();
+    p(`These values are reported exactly as each authority returned them. They are not`);
+    p(`averaged, reconciled or adjusted. Where authorities disagree, the disagreement is`);
+    p(`itself information and belongs in front of the reader.`);
+    p();
+    const noAccuracy = withTokens.filter((r) => !r.resp.token.tstInfo.accuracy);
+    if (noAccuracy.length) {
+      p(`${noAccuracy.length} of ${withTokens.length} authorities returned **no accuracy field**.`);
+      p(`That field is optional in RFC 3161. Where it is absent, the recorded time carries`);
+      p(`no stated bound on how far off it might be, so these tokens do not support an`);
+      p(`argument about sub-second ordering between authorities.`);
+      p();
+    }
+  }
+
+  /* ---------------------------------------------------- the honest limits -- */
+  p(`## NOT ESTABLISHED`);
+  p();
+  p(`Each item below is something this package does **not** show. They are listed with`);
+  p(`the same prominence as the findings above, deliberately.`);
+  p();
+  p(`- **Who wrote the document, or who held it.** A timestamp authority never saw the`);
+  p(`  document and takes no position on its origin.`);
+  p(`- **Whether anything in the document is true.** The authority signed a fingerprint,`);
+  p(`  not a claim about content.`);
+  p(`- **That the document is older than the timestamp.** The document may have been`);
+  p(`  created moments before it was submitted. A timestamp fixes the LATEST moment the`);
+  p(`  content can have existed, never the earliest.`);
+  p(`- **Anything about the past.** A file timestamped today says nothing about last year.`);
+  p(`- **That the signing certificates chain to a root you trust.** A web browser does`);
+  p(`  not expose the operating system trust store to JavaScript, so this was NOT checked`);
+  p(`  by the tool. Run the openssl commands below; that is the step that settles it.`);
+  p(`- **That the operator is who they say they are.** Nothing here authenticates a person.`);
+  p();
+
+  /* ------------------------------------------------------ the recipe -------- */
+  p(`## Verify this package independently`);
+  p();
+  p(`These commands re-derive every claim above using standard tools. Nothing in this`);
+  p(`section depends on trusting ${TOOL_NAME} or its author. Run them from the`);
+  p(`directory where you extracted this package.`);
+  p();
+  p(`Note the \`-CAfile\` argument. \`openssl ts -verify\` consults no trust store by`);
+  p(`default and requires one of \`-CAfile\`, \`-CApath\` or \`-CAstore\` to be named`);
+  p(`explicitly. Omitting it produces a confusing failure about a missing local issuer`);
+  p(`even when the issuer is present on your system.`);
+  p();
+  if (ctx.mode !== 'hash-only') {
+    p(`**1. Confirm the document is the one that was timestamped.**`);
+    p();
+    p('```');
+    p(`sha256sum "document/${ctx.document.name}"`);
+    p(`# expect: ${ctx.document.digestHex}`);
+    p('```');
+    p();
+  }
+  p(`**2. Read each token back.**`);
+  p();
+  p('```');
+  for (const r of withTokens) {
+    p(`openssl ts -reply -in "authorities/${r.id}/response.tsr" -text`);
+  }
+  p('```');
+  p();
+  p(`**3. Verify each token.** The correct trust source is NOT the same for every`);
+  p(`authority, and using the wrong one produces a confident FAILED on a perfectly good`);
+  p(`token. What decides it is whether the authority embedded its own self-signed root`);
+  p(`in the token it sent.`);
+  p();
+  p(`Each command below is written for the authority it names, based on what that`);
+  p(`authority actually returned here. They are not interchangeable.`);
+  p();
+  for (const r of withTokens) {
+    const trust = trustSourceFor(r);
+    p(`*${r.name}* ${trust.why}`);
+    p();
+    p('```');
+    if (trust.note) { p(trust.note); p(trust.note2); }
+    p(`openssl ts -verify -in "authorities/${r.id}/response.tsr" \\`);
+    p(`  -queryfile "request/request.tsq" \\`);
+    if (trust.untrusted) {
+      p(`  -untrusted "authorities/${r.id}/chain.pem" \\`);
+    }
+    p(`  -CAfile ${trust.caFile}`);
+    p('```');
+    p();
+    if (trust.caution) { p(trust.caution); p(); }
+  }
+  p(`On macOS the system bundle is usually \`/etc/ssl/cert.pem\`; on Debian and Ubuntu`);
+  p(`\`/etc/ssl/certs/ca-certificates.crt\`; on Red Hat derivatives`);
+  p(`\`/etc/pki/tls/certs/ca-bundle.crt\`. If your build supports it, \`-CAstore\` can`);
+  p(`reference the operating system store directly.`);
+  p();
+  p(`**Why the flag is required at all.** \`openssl ts -verify\` consults no trust store`);
+  p(`by default and will not go looking for one. The manual page states that at least`);
+  p(`one of \`-CAfile\`, \`-CApath\` or \`-CAstore\` must be given. Omit it and you get an`);
+  p(`error about a missing local issuer even when the issuer is sitting in your system`);
+  p(`bundle, which reads like a broken token and is not.`);
+  p();
+  if (ctx.mode !== 'hash-only') {
+    p(`**4. Or verify against the document directly.** Use this when the request file is`);
+    p(`long gone. It does not check the nonce, which is worth knowing you are skipping.`);
+    p(`The same per-authority trust source applies.`);
+    p();
+    p('```');
+    for (const r of withTokens) {
+      const trust = trustSourceFor(r);
+      p(`openssl ts -verify -data "document/${ctx.document.name}" \\`);
+      p(`  -in "authorities/${r.id}/response.tsr" \\`);
+      if (trust.untrusted) p(`  -untrusted "authorities/${r.id}/chain.pem" \\`);
+      p(`  -CAfile ${trust.caFile}`);
+      p('');
+    }
+    p('```');
+    p();
+  }
+  p(`**5. What \`chain.pem\` is, and what it is not.** Each \`chain.pem\` holds the`);
+  p(`certificates the authority embedded in its own token, and nothing else. Verifying`);
+  p(`against it shows the token is internally consistent. It shows that the authority`);
+  p(`is one *you* trust only when the authority chose to include its own root, which`);
+  p(`some do and most do not. The table above says which is which for this package.`);
+  p();
+  p(`**6. Validate the ASiC containers.** Each \`.asics\` file in this package is an`);
+  p(`ASiC-S container per ETSI EN 319 162-1, holding the document and one timestamp`);
+  p(`token. Third-party validators read this format, including the European`);
+  p(`Commission's DSS demonstration validator. They have never heard of this tool.`);
+  p();
+
+  /* --------------------------------------------------------- provenance ----- */
+  p(`## How this package was produced`);
+  p();
+  p(`- **Tool:** ${TOOL_NAME} version ${ctx.version}`);
+  if (ctx.toolSha256) {
+    p(`- **SHA-256 of the page that produced this:** \`${ctx.toolSha256}\``);
+    p(`  Compare this against the published digest for that version to confirm the tool`);
+    p(`  had not been modified. The tool is a single HTML file and anyone can edit one.`);
+  } else {
+    p(`- **SHA-256 of the page that produced this:** not recorded.`);
+  }
+  p(`- **Transport:** ${ctx.transportNote}`);
+  p();
+  p(`The transport is recorded because packages made by different routes have different`);
+  p(`custody stories, and a reader should not have to discover which one this was.`);
+  p();
+  if (ctx.transport === 'relay') {
+    p(`A relay forwards the 32-byte fingerprint to each authority and returns the reply.`);
+    p(`It holds no authority's signing key, so it cannot forge a token or alter one: any`);
+    p(`change breaks a signature that only the authority can make. The most a relay could`);
+    p(`do is learn the fingerprint, delay a request, or return a token for a *different*`);
+    p(`fingerprint, and that last case is caught by the "Token commits to this exact`);
+    p(`document" check above, which compares against a hash computed locally in the`);
+    p(`browser. The relay is untrusted by construction.`);
+    p();
+  }
+  p(`### Operator's clock (NOT evidence)`);
+  p();
+  p(`- The computer that produced this package reported its own local time as`);
+  p(`  \`${ctx.localClock.toISOString()}\` when the package was assembled.`);
+  p();
+  p(`That value is recorded for completeness and is **not evidence of anything**. It`);
+  p(`came from a clock the operator controls and can set to any value. The only`);
+  p(`authoritative times in this package are the genTime values inside the tokens,`);
+  p(`listed above, which were signed by parties who do not know the operator.`);
+  p();
+  p(`Likewise, the file modification dates on the files in this archive describe when`);
+  p(`this package was written, never when the document was created.`);
+  p();
+
+  /* --------------------------------------------------------- tool status ---- */
+  p(`## Status of this tool`);
+  p();
+  p(`${TOOL_NAME} is **not a validated forensic instrument**. It has not been through`);
+  p(`formal validation, and its listing anywhere is a description of what exists, not a`);
+  p(`warrant of fitness for any particular purpose.`);
+  p();
+  p(`This does not weaken the package. The evidence here is not this tool's output; it`);
+  p(`is a set of cryptographic tokens signed by independent third parties, checkable`);
+  p(`with standard software using the commands in this document. The tool's job was to`);
+  p(`collect those tokens and keep them together with the document. Verify the tokens,`);
+  p(`not the tool.`);
+  p();
+  p(`Source code: https://github.com/LucidTruthTechnologies/timestamp-tool`);
+  p();
+
+  /* ----------------------------------------------------------- preserve ----- */
+  p(`## Preserving this package`);
+  p();
+  p(`1. **Keep this ZIP file exactly as it is.** Do not open it and re-save it, do not`);
+  p(`   add files to it, do not rename anything inside it.`);
+  p(`2. **To work with the document, extract a COPY** and work on the copy. Leave this`);
+  p(`   archive untouched.`);
+  p(`3. **Store at least two copies** in places that fail independently.`);
+  p(`4. Copying this archive changes the file dates your operating system shows for it.`);
+  p(`   That is normal and harmless. The evidence is inside the file, not in its`);
+  p(`   filesystem metadata.`);
+  p(`5. **Re-timestamp before the signing certificates expire.** The earliest expiry`);
+  p(`   among the tokens here is **${earliestExpiry(ctx.results)}**. Before then, take a`);
+  p(`   fresh timestamp over this whole archive so the proof carries forward.`);
+  p();
+
+  return L.join('\n');
+}
+
+/** The short plain-text file a non-technical holder opens first. */
+function buildReadme(ctx) {
+  const digest = ctx.document?.digestHex ?? '(none)';
+  const ok = ctx.results.filter((r) => r.ok && r.resp?.token);
+  return `WHAT THIS IS, AND WHAT TO DO WITH IT
+${'='.repeat(52)}
+
+This archive is a record that a fingerprint of your document was shown to
+${ok.length} independent timestamp ${ok.length === 1 ? 'authority' : 'authorities'} on the date recorded inside.
+
+Those authorities never saw your document. They only saw a fingerprint, which
+cannot be turned back into the document.
+
+
+THE ONE THING TO DO FIRST
+${'-'.repeat(52)}
+
+Check that the document in here is the one that was timestamped.
+
+${ctx.mode === 'hash-only'
+  ? `  This package does NOT contain your document. You supplied only a
+  fingerprint. Find the file you preserved and run:
+
+      sha256sum <your-file>`
+  : `      sha256sum "document/${ctx.document.name}"`}
+
+It must print exactly this:
+
+      ${digest}
+
+If it prints something else, the document does not match and nothing else
+in this archive applies to it.
+
+
+WHAT IT SHOWS, IN ONE SENTENCE
+${'-'.repeat(52)}
+
+That the contents of your document existed NO LATER THAN the moment recorded
+in the tokens.
+
+It does NOT show who wrote it, who held it, whether any of it is true, or
+that the document is any older than that moment. It does not reach backwards:
+a file stamped today says nothing about last year.
+
+
+HOW TO LOOK AFTER IT
+${'-'.repeat(52)}
+
+  KEEP this ZIP file exactly as it is. Do not add to it, rename things inside
+  it, or open and re-save it.
+
+  To USE the document, extract a COPY and work on the copy. The original
+  archive stays untouched.
+
+  Keep more than one copy, in places that would not be lost together.
+
+  Copying the archive changes the dates your computer shows for the file
+  itself. That is normal. The evidence is inside the archive.
+
+
+WHAT ELSE IS IN HERE
+${'-'.repeat(52)}
+
+  REPORT.md / REPORT.html   The full record, including commands anyone can
+                            run to check all of this independently.
+  MANIFEST.txt              Every file in this archive and its fingerprint.
+  ${ctx.mode === 'hash-only' ? 'request/' : 'document/'}                 ${ctx.mode === 'hash-only' ? 'The request that was sent.' : 'Your original document, unchanged.'}
+  authorities/              What each authority sent back, with certificates.
+  *.asics                   Standard-format containers (ETSI EN 319 162)
+                            that third-party validators can read.
+
+
+IF SOMEONE CHALLENGES THIS
+${'-'.repeat(52)}
+
+Give them the whole archive and point them at REPORT.md. It contains the
+exact commands to verify everything using standard, freely available
+software. They do not have to trust the tool that made this, and they should
+not be asked to. The tokens are signed by the authorities, not by us.
+
+Source code: https://github.com/LucidTruthTechnologies/timestamp-tool
+`;
+}
+
+/** Manifest of every packaged file with its own digest. */
+function buildManifest(entries) {
+  const L = [
+    'MANIFEST',
+    '',
+    'SHA-256 of every file in this archive, so the archive can be checked for',
+    'completeness without relying on the report.',
+    '',
+    'Verify with:   sha256sum -c MANIFEST.txt',
+    '(run from the directory where you extracted this archive)',
+    '',
+  ];
+  for (const e of entries) L.push(`${e.digestHex}  ${e.path}`);
+  L.push('');
+  return L.join('\n');
+}
+
+/**
+ * Does this authority's token embed its own self-signed root?
+ *
+ * This single property decides which trust source verifies the token, and getting it
+ * wrong sends a reader to a FAILED verification on good evidence. Measured across the
+ * four authorities this tool uses: FreeTSA embeds a self-signed root (2 certificates),
+ * DigiCert and Sectigo embed signer plus intermediates and no root (3 each), and
+ * Sigstore embeds the signer alone (1).
+ *
+ * The widely repeated advice "keep the authority's chain and verify against it" is
+ * therefore correct for exactly one of them.
+ */
+function chainHasSelfSignedRoot(token) {
+  return token.certificates.some((c) => c.subject === c.issuer);
+}
+
+const PUBLICLY_TRUSTED_ROOT = new Set(['digicert', 'sectigo']);
+
+function trustSourceFor(r) {
+  const selfSigned = chainHasSelfSignedRoot(r.resp.token);
+  const n = r.resp.token.certificates.length;
+
+  if (selfSigned) {
+    return {
+      caFile: `"authorities/${r.id}/chain.pem"`,
+      untrusted: false,
+      why: `embedded its own self-signed root in the token (${n} certificates), so the ` +
+        `bundled chain is a complete trust source on its own.`,
+      caution:
+        'Note what this does and does not show. It confirms the token is consistent with ' +
+        'a root the authority itself supplied. It is not an independent check that anyone ' +
+        'else trusts that root, because the same party provided both the signature and the ' +
+        'anchor. Treat this as a self-consistency check unless you have obtained this ' +
+        'authority\'s root from its published location by some other route.',
+    };
+  }
+
+  if (PUBLICLY_TRUSTED_ROOT.has(r.id)) {
+    return {
+      caFile: '/etc/ssl/certs/ca-certificates.crt',
+      untrusted: false,
+      why: `embedded its signing certificate and intermediates but NOT a root ` +
+        `(${n} certificates), so the trust anchor must come from your own system bundle. ` +
+        `This is the stronger result of the two: the anchor is one your operating system ` +
+        `vendor put there, not one the authority handed you.`,
+      caution: null,
+    };
+  }
+
+  /* The placeholder is shell-safe on purpose. An earlier version wrote
+   * "<path to this authority's published root certificate>", whose apostrophe breaks
+   * shell quoting, so a reader pasting the block got a syntax error rather than a
+   * clear prompt to supply a file. A placeholder a reader will paste has to survive
+   * being pasted. */
+  return {
+    caFile: `/path/to/${r.id}-root.pem`,
+    note: `# ${r.name} does not ship a root in its token and its root is not in system`,
+    note2: `# trust stores. Replace the path below with its published root certificate.`,
+    untrusted: true,
+    why: `embedded ${n} certificate${n === 1 ? '' : 's'} and no self-signed root, and its ` +
+      `root is not normally present in operating system trust stores.`,
+    caution:
+      'This authority cannot be verified against a stock system bundle. You must obtain ' +
+      'its root certificate from its own published location and name that file. Until you ' +
+      'do, treat this token as corroboration that sits alongside the others rather than as ' +
+      'independently anchored evidence.',
+  };
+}
+
+function describeHashMethod(doc) {
+  if (doc.crossChecked) {
+    return 'computed twice, by the browser\'s Web Crypto implementation and by an ' +
+      'independent implementation in this tool, and the two agreed';
+  }
+  return 'computed by a streaming implementation in this tool (the file was too large ' +
+    'for the second, cross-checking implementation to run)';
+}
+
+function formatAccuracy(a) {
+  if (!a) return '**ABSENT** (optional in RFC 3161; no stated bound on error)';
+  const parts = [];
+  if (a.seconds != null) parts.push(`${a.seconds}s`);
+  if (a.millis != null) parts.push(`${a.millis}ms`);
+  if (a.micros != null) parts.push(`${a.micros}us`);
+  return parts.length ? parts.join(' ') : 'present but empty';
+}
+
+function earliestExpiry(results) {
+  const dates = results
+    .filter((r) => r.ok && r.resp?.token)
+    .map((r) => tsp.findSignerCertificate(r.resp.token))
+    .filter(Boolean)
+    .map((c) => c.notAfter);
+  if (!dates.length) return 'not determined';
+  return new Date(Math.min(...dates.map((d) => d.getTime()))).toISOString().slice(0, 10);
+}
+
+/** Wrap the markdown report in a self-contained, printable HTML file. */
+function reportToHtml(markdown, title) {
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title>
+<style>
+  :root { color-scheme: light dark; --ink:#12161c; --paper:#fff; --rule:#d7dde5; --quiet:#5b6675; --fail:#a3271e; --gap:#8a5a00; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#e6eaf0; --paper:#12161c; --rule:#2b323c; --quiet:#9aa5b4; --fail:#ff9c92; --gap:#e0b25a; } }
+  body { background:var(--paper); color:var(--ink); font:16px/1.65 Georgia,"Times New Roman",serif; max-width:46rem; margin:0 auto; padding:2rem 1rem 6rem; }
+  h1,h2,h3,h4 { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.25; }
+  h1 { font-size:1.6rem; border-bottom:2px solid var(--rule); padding-bottom:.4rem; }
+  h2 { font-size:1.25rem; margin-top:2.5rem; border-bottom:1px solid var(--rule); padding-bottom:.3rem; }
+  h3 { font-size:1.05rem; margin-top:1.8rem; } h4 { font-size:.95rem; color:var(--quiet); }
+  pre { background:rgba(127,127,127,.1); padding:.8rem 1rem; overflow-x:auto; border-left:3px solid var(--rule); }
+  code,pre { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:.85em; }
+  table { border-collapse:collapse; width:100%; margin:1rem 0; font-size:.9rem; }
+  th,td { border:1px solid var(--rule); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  th { background:rgba(127,127,127,.08); font-family:system-ui,sans-serif; }
+  strong { font-weight:700; }
+  li { margin:.3rem 0; }
+</style></head><body>
+${mdToHtml(markdown, esc)}
+</body></html>`;
+}
+
+/* A deliberately small markdown renderer. It covers only what buildReport emits.
+ * Anything it does not understand is escaped and shown verbatim, so an unhandled
+ * construct degrades to visible text rather than to silently dropped content. */
+function mdToHtml(md, esc) {
+  const out = [];
+  const lines = md.split('\n');
+  let inCode = false, inTable = false, inList = false;
+
+  const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+  const closeTable = () => { if (inTable) { out.push('</table>'); inTable = false; } };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.trim() === '```') {
+      closeList(); closeTable();
+      out.push(inCode ? '</pre>' : '<pre>');
+      inCode = !inCode;
+      continue;
+    }
+    if (inCode) { out.push(esc(line)); continue; }
+
+    const h = line.match(/^(#{1,4})\s+(.*)$/);
+    if (h) { closeList(); closeTable(); out.push(`<h${h[1].length}>${inline(h[2], esc)}</h${h[1].length}>`); continue; }
+
+    if (/^\|/.test(line)) {
+      if (/^\|[\s:|-]+\|$/.test(line)) continue;   // separator row
+      closeList();
+      const cells = line.split('|').slice(1, -1).map((c) => c.trim());
+      if (!inTable) { out.push('<table>'); inTable = true; out.push('<tr>' + cells.map((c) => `<th>${inline(c, esc)}</th>`).join('') + '</tr>'); }
+      else out.push('<tr>' + cells.map((c) => `<td>${inline(c, esc)}</td>`).join('') + '</tr>');
+      continue;
+    }
+    closeTable();
+
+    const li = line.match(/^(\s*)[-*]\s+(.*)$/);
+    if (li) { if (!inList) { out.push('<ul>'); inList = true; } out.push(`<li>${inline(li[2], esc)}</li>`); continue; }
+    const ol = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (ol) { if (!inList) { out.push('<ul>'); inList = true; } out.push(`<li>${inline(ol[1], esc)}</li>`); continue; }
+    closeList();
+
+    if (line.trim() === '') continue;
+    out.push(`<p>${inline(line, esc)}</p>`);
+  }
+  closeList(); closeTable();
+  if (inCode) out.push('</pre>');
+  return out.join('\n');
+}
+
+function inline(s, esc) {
+  return esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+}
+
+/* ===== package.js ================================================== */
+/* package.js: assemble the evidence archive.
+ *
+ * Layout, and why it is this shape:
+ *
+ *   README-FIRST.txt        plain text, opens first, leads with "re-hash and compare"
+ *   REPORT.md               the full record, plain text so it outlives HTML renderers
+ *   REPORT.html             the same content, readable in any browser, offline
+ *   MANIFEST.txt            sha256sum -c format, so completeness is checkable
+ *   document/<name>         the original bytes, STORED, byte-identical on extraction
+ *   request/request.tsq     mandatory: the nonce lives here and cannot be checked without it
+ *   authorities/<id>/       response.tsr, token.tst, chain.pem, per authority
+ *   <id>.asics              ASiC-S containers, one per authority, for third-party validators
+ *
+ * Two files carry the same content in two formats on purpose. REPORT.html is what a
+ * person will actually read; REPORT.md is what will still be readable when no browser
+ * of this era exists. Longevity is the whole point of the exercise.
+ */
+
+
+/**
+ * @returns { blob, filename, manifest, asicChecks }
+ */
+async function buildPackage(ctx) {
+  const enc = new TextEncoder();
+  const withTokens = ctx.results.filter((r) => r.ok && r.resp?.token);
+
+  /* Stamp every archive entry with an authority-signed instant rather than the local
+   * clock, so the container itself contains no machine-clock value a reader could
+   * mistake for evidence. Falls back to the ZIP epoch when nothing was granted. */
+  const stampDate = withTokens.length
+    ? new Date(Math.min(...withTokens.map((r) => r.resp.token.tstInfo.genTime.getTime())))
+    : new Date(Date.UTC(1980, 0, 1));
+
+  const files = [];
+  const addFile = (path, data) => { files.push({ path, data }); };
+
+  const markdown = buildReport(ctx);
+  addFile('README-FIRST.txt', buildReadme(ctx));
+  addFile('REPORT.md', markdown);
+  addFile('REPORT.html', reportToHtml(markdown, 'Timestamp evidence record'));
+
+  if (ctx.mode !== 'hash-only' && ctx.documentBlob) {
+    addFile(`document/${sanitize(ctx.document.name)}`, ctx.documentBlob);
+  }
+  addFile('request/request.tsq', ctx.requestBytes);
+
+  for (const r of ctx.results) {
+    const base = `authorities/${r.id}`;
+    addFile(`${base}/endpoint.txt`,
+      `${r.name}\n${r.endpoint}\n\n` +
+      (r.ok ? `status: ${r.resp?.statusName ?? 'unknown'}\n` : `NOT OBTAINED: ${r.error ?? 'unknown error'}\n`));
+    if (!r.ok || !r.resp?.token) continue;
+
+    addFile(`${base}/response.tsr`, r.responseBytes);
+    addFile(`${base}/token.tst`, r.resp.tokenBytes);
+
+    const pem = r.resp.token.certificates.map((c) => tsp.toPem(c.der)).join('');
+    addFile(`${base}/chain.pem`, pem);
+
+    const detail = r.resp.token.certificates
+      .map((c, i) => `# ${i + 1}\nsubject: ${c.subject}\nissuer:  ${c.issuer}\nserial:  0x${c.serialHex.toUpperCase()}\nvalid:   ${c.notBefore.toISOString()} .. ${c.notAfter.toISOString()}\n`)
+      .join('\n');
+    addFile(`${base}/chain.txt`,
+      `Certificates embedded in the ${r.name} token (${r.resp.token.certificates.length}).\n\n` +
+      `A root may be absent: an authority is not required to embed one.\n\n${detail}`);
+  }
+
+  /* ASiC-S containers. Only possible with the document present, because the standard
+   * requires the data file to be inside the container. In hash-only mode we say so
+   * rather than shipping something that looks conformant and is not. */
+  const asicChecks = [];
+  if (ctx.mode !== 'hash-only' && ctx.documentBlob) {
+    for (const r of withTokens) {
+      const asic = await buildAsicS({
+        documentName: sanitize(ctx.document.name),
+        documentData: ctx.documentBlob,
+        tokenBytes: r.resp.tokenBytes,
+        date: r.resp.token.tstInfo.genTime,
+      });
+      const check = await checkAsicStructure(asic);
+      asicChecks.push({ id: r.id, ...check });
+      /* Refuse to ship a container that fails its own structural check. A
+       * non-conformant ASiC opens fine in every unzip tool and is rejected by every
+       * validator, which is the worst combination available. */
+      if (check.ok) addFile(`${r.id}.asics`, asic);
+    }
+    addFile('asic/README.txt', asicReadme(asicChecks));
+  } else {
+    addFile('asic/README.txt',
+      'No ASiC containers were produced.\n\n' +
+      'ASiC-S requires the data file to sit inside the container, and this package was\n' +
+      'made in hash-only mode, so there is no document to place in one.\n');
+  }
+
+  /* Manifest last: it digests everything else, and cannot digest itself. */
+  const manifestEntries = [];
+  for (const f of files) {
+    manifestEntries.push({ path: f.path, digestHex: await digestOf(f.data, enc) });
+  }
+  addFile('MANIFEST.txt', buildManifest(manifestEntries));
+
+  const zip = new ZipWriter(stampDate);
+  for (const f of files) await zip.add(f.path, f.data);
+  const blob = zip.finish('application/zip');
+
+  return {
+    blob,
+    filename: makeFilename(ctx, stampDate),
+    manifest: manifestEntries,
+    asicChecks,
+  };
+}
+
+async function digestOf(data, enc) {
+  let bytes;
+  if (typeof data === 'string') bytes = enc.encode(data);
+  else if (data instanceof Uint8Array) bytes = data;
+  else if (typeof Blob !== 'undefined' && data instanceof Blob) bytes = new Uint8Array(await data.arrayBuffer());
+  else throw new Error('digestOf: unsupported type');
+  return toHex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)));
+}
+
+function asicReadme(checks) {
+  return `ASiC CONTAINERS
+${'='.repeat(52)}
+
+Each .asics file in the parent directory is an ASiC-S container as defined by
+ETSI EN 319 162-1. Each one holds:
+
+    mimetype                  application/vnd.etsi.asic-s+zip
+    <your document>           the data file
+    META-INF/timestamp.tst    one RFC 3161 timestamp token over that file
+
+There is one container per authority because ASiC-S permits exactly one time
+assertion per container. That shape was chosen deliberately: here each token
+covers your document's own hash directly. The alternative single-container
+form (ASiC-E) has each token cover an intermediate manifest instead, which is
+harder to explain and harder to defend.
+
+These are standard files. Validators that have never heard of the tool that
+made this package can read them, including the European Commission's DSS
+demonstration validator.
+
+Structural self-check performed at packaging time:
+
+${checks.map((c) => `  ${c.id}: ${c.ok ? 'PASS' : 'FAIL'}\n${c.findings.map((f) => `      ${f.ok ? 'ok  ' : 'FAIL'} ${f.rule}`).join('\n')}`).join('\n\n')}
+`;
+}
+
+/** Strip path separators and control characters from a user-supplied filename. */
+function sanitize(name) {
+  return (name || 'document')
+    .replace(/[/\\]/g, '_')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    .replace(/^\.+/, '')
+    .slice(0, 180) || 'document';
+}
+
+function makeFilename(ctx, stampDate) {
+  const stamp = stampDate.toISOString().replace(/[-:]/g, '').replace(/\..+/, 'Z');
+  const base = ctx.mode === 'hash-only'
+    ? 'hash'
+    : sanitize(ctx.document.name).replace(/\.[^.]+$/, '').slice(0, 40).replace(/[^A-Za-z0-9._-]/g, '-');
+  return `timestamp-evidence-${base}-${stamp}.zip`;
+}
+
+/* ===== app.js ================================================== */
+/* app.js: the interface and the transport.
+ *
+ * The page does the hashing, builds the request, checks the replies and assembles
+ * the archive. The only thing it cannot do by itself is reach three of the four
+ * authorities, because browsers refuse cross-origin POSTs that those authorities
+ * will not answer a preflight for. Hence two paths, and the archive records which
+ * one produced it.
+ */
+
+
+const VERSION = '0.1.0';
+const DEFAULT_RELAY = 'https://relay.timestamp.lucidtruthtechnologies.com';
+
+/* Sigstore is reachable DIRECTLY from a browser: it is the one authority in this set
+ * that sends Access-Control-Allow-Origin. That matters more than it looks. It means
+ * this page still produces a genuine RFC 3161 token when every relay on earth is
+ * down. Its root is self-signed and in no operating system trust store, so it is
+ * recorded as a corroborant rather than a primary, and the report says so. */
+const AUTHORITIES = [
+  { id: 'freetsa',  name: 'FreeTSA',  direct: 'https://freetsa.org/tsr',        relayPath: '/tsa/freetsa',  kind: 'primary' },
+  { id: 'digicert', name: 'DigiCert', direct: 'http://timestamp.digicert.com',  relayPath: '/tsa/digicert', kind: 'primary' },
+  { id: 'sectigo',  name: 'Sectigo',  direct: 'http://timestamp.sectigo.com',   relayPath: '/tsa/sectigo',  kind: 'primary' },
+  { id: 'sigstore', name: 'Sigstore', direct: 'https://timestamp.sigstore.dev/api/v1/timestamp', relayPath: null, kind: 'corroborant', browserReachable: true },
+];
+
+const TSQ_TYPE = 'application/timestamp-query';
+const PER_AUTHORITY_TIMEOUT_MS = 25000;
+
+const state = {
+  mode: null,            // 'file' | 'hash-only'
+  file: null,
+  documentBlob: null,
+  digest: null,
+  digestHex: null,
+  hashMethod: null,
+  crossChecked: false,
+  nonce: null,
+  nonceHex: null,
+  requestBytes: null,
+  transport: null,       // 'relay' | 'offline'
+  results: [],
+  relayBase: DEFAULT_RELAY,
+};
+
+const $ = (sel) => document.querySelector(sel);
+const show = (sel) => $(sel).classList.remove('hidden');
+const hide = (sel) => $(sel).classList.add('hidden');
+
+/* ------------------------------------------------------------- wiring ------ */
+
+function init() {
+  $('#tool-version').textContent = VERSION;
+  $('#relay-url').value = state.relayBase;
+
+  const drop = $('#drop');
+  const picker = $('#file-input');
+
+  drop.addEventListener('click', () => picker.click());
+  drop.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); picker.click(); }
+  });
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    if (e.dataTransfer.files.length) onFile(e.dataTransfer.files[0]);
+  });
+  picker.addEventListener('change', () => { if (picker.files.length) onFile(picker.files[0]); });
+
+  $('#use-hash').addEventListener('click', () => { hide('#step-input'); show('#step-hash-entry'); $('#hash-input').focus(); });
+  $('#hash-back').addEventListener('click', () => { show('#step-input'); hide('#step-hash-entry'); });
+  $('#hash-accept').addEventListener('click', onHashEntered);
+
+  $('#btn-relay').addEventListener('click', () => submitViaRelay());
+  $('#btn-offline').addEventListener('click', () => prepareOffline());
+  $('#btn-restart').addEventListener('click', () => location.reload());
+  $('#btn-download').addEventListener('click', onDownload);
+
+  $('#relay-url').addEventListener('change', (e) => {
+    state.relayBase = e.target.value.trim().replace(/\/$/, '');
+  });
+
+  const resp = $('#resp-drop');
+  resp.addEventListener('click', () => $('#resp-input').click());
+  resp.addEventListener('dragover', (e) => { e.preventDefault(); resp.classList.add('over'); });
+  resp.addEventListener('dragleave', () => resp.classList.remove('over'));
+  resp.addEventListener('drop', (e) => {
+    e.preventDefault(); resp.classList.remove('over');
+    onResponseFiles([...e.dataTransfer.files]);
+  });
+  $('#resp-input').addEventListener('change', (e) => onResponseFiles([...e.target.files]));
+}
+
+/* ------------------------------------------------------------- input ------- */
+
+async function onFile(file) {
+  state.mode = 'file';
+  state.file = file;
+  state.documentBlob = file;
+
+  hide('#step-input');
+  show('#step-hashing');
+  $('#hashing-name').textContent = file.name;
+  $('#hashing-size').textContent = formatBytes(file.size);
+
+  if (file.size > LARGE_FILE_THRESHOLD) {
+    $('#hashing-note').textContent =
+      'This file is large enough that it is read in pieces. The second, cross-checking ' +
+      'hash implementation cannot run on a file this size, and the record will say so.';
+    show('#hashing-note');
+  }
+
+  try {
+    const { digest, method, crossChecked } = await hashFile(file, (read, total) => {
+      $('#hash-bar').style.width = `${Math.round((read / total) * 100)}%`;
+      $('#hash-status').textContent = `Reading ${formatBytes(read)} of ${formatBytes(total)}`;
+    });
+    state.digest = digest;
+    state.digestHex = toHex(digest);
+    state.hashMethod = method;
+    state.crossChecked = crossChecked;
+    toReview();
+  } catch (e) {
+    hide('#step-hashing');
+    show('#step-input');
+    $('#input-error').textContent = e.message;
+    show('#input-error');
+  }
+}
+
+function onHashEntered() {
+  const raw = $('#hash-input').value.trim();
+  const errEl = $('#hash-error');
+  try {
+    const bytes = fromHex(raw);
+    if (bytes.length !== 32) {
+      throw new Error(`a SHA-256 digest is 32 bytes, which is 64 hex characters; you gave ${bytes.length} bytes`);
+    }
+    state.mode = 'hash-only';
+    state.digest = bytes;
+    state.digestHex = toHex(bytes);
+    state.hashMethod = 'supplied by the operator';
+    state.crossChecked = false;
+    state.documentBlob = null;
+    errEl.classList.add('hidden');
+    hide('#step-hash-entry');
+    toReview();
+  } catch (e) {
+    errEl.textContent = `That is not a SHA-256 digest: ${e.message}.`;
+    errEl.classList.remove('hidden');
+  }
+}
+
+function toReview() {
+  state.nonce = tsp.generateNonce();
+  state.nonceHex = toHex(state.nonce).replace(/^0+(?=.)/, '');
+  state.requestBytes = tsp.buildTimeStampReq({
+    digest: state.digest,
+    hashOid: tsp.OID.sha256,
+    nonce: state.nonce,
+    certReq: true,
+  });
+
+  hide('#step-hashing');
+  $('#rev-mode').textContent = state.mode === 'file' ? 'A file you supplied' : 'A fingerprint you supplied (no document)';
+  $('#rev-name').textContent = state.mode === 'file' ? state.file.name : 'not supplied';
+  $('#rev-size').textContent = state.mode === 'file' ? formatBytes(state.file.size) : 'not applicable';
+  $('#rev-hash').textContent = state.digestHex;
+  $('#rev-req').textContent = `${state.requestBytes.length} bytes`;
+
+  $('#hash-only-warning').classList.toggle('hidden', state.mode !== 'hash-only');
+  show('#step-review');
+}
+
+/* ----------------------------------------------------------- transport ----- */
+
+async function submitViaRelay() {
+  state.transport = 'relay';
+  hide('#step-review');
+  show('#step-submitting');
+  renderPending();
+
+  const jobs = AUTHORITIES.map(async (a) => {
+    const useDirect = a.browserReachable;
+    const endpoint = useDirect ? a.direct : `${state.relayBase}${a.relayPath}`;
+    try {
+      const responseBytes = await postRequest(endpoint, state.requestBytes);
+      return await evaluate(a, endpoint, responseBytes, useDirect ? 'direct' : 'relay');
+    } catch (e) {
+      markRow(a.id, 'fail', e.message);
+      return { id: a.id, name: a.name, endpoint, ok: false, error: e.message, checks: [], summary: {} };
+    }
+  });
+
+  state.results = await Promise.all(jobs);
+  toResults();
+}
+
+async function postRequest(endpoint, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PER_AUTHORITY_TIMEOUT_MS);
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': TSQ_TYPE },
+      body,
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} from the endpoint`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length === 0) throw new Error('the endpoint returned an empty reply');
+    return bytes;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`no reply within ${PER_AUTHORITY_TIMEOUT_MS / 1000} seconds`);
+    /* A CORS rejection surfaces as an opaque TypeError with the real reason confined
+     * to the devtools console. Saying so is more useful than repeating "Failed to
+     * fetch" at someone who cannot open devtools. */
+    if (e instanceof TypeError) {
+      throw new Error('the browser blocked or could not complete this request (often a CORS or network failure)');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function evaluate(a, endpoint, responseBytes, via) {
+  let resp;
+  try {
+    resp = tsp.parseTimeStampResp(responseBytes);
+  } catch (e) {
+    markRow(a.id, 'fail', `reply could not be parsed: ${e.message}`);
+    return { id: a.id, name: a.name, endpoint, ok: false, error: `unparseable reply: ${e.message}`, checks: [], summary: {} };
+  }
+
+  const { checks, summary } = await verifyResponse(resp, {
+    digest: state.digest, digestHex: state.digestHex, nonceHex: state.nonceHex,
+  });
+
+  const ok = resp.granted && !!resp.token && !summary.anyFailure;
+  markRow(a.id, ok ? 'ok' : 'fail',
+    resp.token ? `${resp.statusName}, ${resp.token.tstInfo.genTimeRaw}` : resp.statusName);
+
+  return { id: a.id, name: a.name, endpoint, via, ok: resp.granted && !!resp.token, resp, responseBytes, checks, summary };
+}
+
+/* ------------------------------------------------------------ offline ------ */
+
+function prepareOffline() {
+  state.transport = 'offline';
+  hide('#step-review');
+  show('#step-offline');
+
+  download('request.tsq', new Blob([state.requestBytes], { type: TSQ_TYPE }));
+  $('#offline-sh').textContent = shellScript();
+  $('#offline-bat').textContent = batchScript();
+
+  $('#dl-sh').onclick = () => download('stamp.sh', new Blob([shellScript()], { type: 'text/x-shellscript' }));
+  $('#dl-bat').onclick = () => download('stamp.bat', new Blob([batchScript()], { type: 'text/plain' }));
+  $('#dl-tsq').onclick = () => download('request.tsq', new Blob([state.requestBytes], { type: TSQ_TYPE }));
+}
+
+function shellScript() {
+  const lines = AUTHORITIES.filter((a) => a.kind === 'primary' || a.browserReachable).map((a) =>
+    `curl -sS -H "Content-Type: ${TSQ_TYPE}" --data-binary @request.tsq \\\n  "${a.direct}" -o "${a.id}.tsr" && echo "  ${a.name}: $(wc -c < "${a.id}.tsr") bytes" || echo "  ${a.name}: FAILED"`);
+  return `#!/bin/sh
+# Timestamp request helper, generated by LTT Timestamp Tool ${VERSION}.
+#
+# Run this in the same folder as request.tsq. It sends the request to each
+# authority and saves the replies beside it. Then drag the .tsr files back onto
+# the tool page.
+#
+# It sends only request.tsq, which contains a fingerprint and nothing else.
+# Your document is not read by this script and never leaves this machine.
+set -u
+cd "$(dirname "$0")"
+if [ ! -f request.tsq ]; then echo "request.tsq not found; put this script beside it."; exit 1; fi
+echo "Sending the request to each authority:"
+${lines.join('\n')}
+echo
+echo "Done. Drag the .tsr files back onto the tool page."
+`;
+}
+
+function batchScript() {
+  const lines = AUTHORITIES.filter((a) => a.kind === 'primary' || a.browserReachable).map((a) =>
+    `curl -sS -H "Content-Type: ${TSQ_TYPE}" --data-binary @request.tsq "${a.direct}" -o "${a.id}.tsr"\r\nif exist "${a.id}.tsr" (echo   ${a.name}: saved) else (echo   ${a.name}: FAILED)`);
+  return `@echo off\r
+REM Timestamp request helper, generated by LTT Timestamp Tool ${VERSION}.\r
+REM Run this in the same folder as request.tsq. curl ships with Windows 10 and later.\r
+REM It sends only request.tsq, which contains a fingerprint and nothing else.\r
+cd /d "%~dp0"\r
+if not exist request.tsq (echo request.tsq not found; put this file beside it. & pause & exit /b 1)\r
+echo Sending the request to each authority:\r
+${lines.join('\r\n')}\r
+echo.\r
+echo Done. Drag the .tsr files back onto the tool page.\r
+pause\r
+`;
+}
+
+async function onResponseFiles(files) {
+  const found = [];
+  for (const f of files) {
+    const id = AUTHORITIES.find((a) => f.name.toLowerCase().startsWith(a.id))?.id;
+    if (!id) continue;
+    const a = AUTHORITIES.find((x) => x.id === id);
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    found.push(await evaluate(a, a.direct, bytes, 'offline'));
+  }
+  if (!found.length) {
+    $('#resp-error').textContent =
+      'None of those files matched an expected name. They should be called freetsa.tsr, ' +
+      'digicert.tsr, sectigo.tsr or sigstore.tsr, exactly as the helper script saved them.';
+    show('#resp-error');
+    return;
+  }
+  hide('#resp-error');
+
+  const byId = new Map(state.results.map((r) => [r.id, r]));
+  for (const r of found) byId.set(r.id, r);
+  for (const a of AUTHORITIES) {
+    if (!byId.has(a.id)) {
+      byId.set(a.id, { id: a.id, name: a.name, endpoint: a.direct, ok: false, error: 'no reply file was supplied', checks: [], summary: {} });
+    }
+  }
+  state.results = AUTHORITIES.map((a) => byId.get(a.id));
+  hide('#step-offline');
+  toResults();
+}
+
+/* ----------------------------------------------------------- rendering ----- */
+
+function renderPending() {
+  const host = $('#submit-rows');
+  host.innerHTML = '';
+  for (const a of AUTHORITIES) {
+    const row = document.createElement('div');
+    row.className = 'status';
+    row.id = `row-${a.id}`;
+    row.textContent = `${a.name}: contacting...`;
+    host.appendChild(row);
+  }
+}
+
+function markRow(id, kind, text) {
+  const row = document.getElementById(`row-${id}`);
+  if (!row) return;
+  const a = AUTHORITIES.find((x) => x.id === id);
+  row.textContent = `${a.name}: ${kind === 'ok' ? 'replied' : 'no usable reply'} (${text})`;
+}
+
+function toResults() {
+  hide('#step-submitting');
+  show('#step-results');
+
+  const got = state.results.filter((r) => r.ok && r.resp?.token);
+  const lost = state.results.filter((r) => !r.ok || !r.resp?.token);
+
+  $('#result-headline').textContent =
+    `${got.length} of ${state.results.length} authorities returned a usable timestamp.`;
+
+  if (lost.length) {
+    $('#result-missing').innerHTML =
+      `<strong>Not obtained:</strong> ${lost.map((r) => `${r.name} (${escapeHtml(r.error ?? r.resp?.statusName ?? 'no token')})`).join('; ')}. ` +
+      'These are recorded in the archive as missing rather than left out, so the record ' +
+      'shows what was attempted.';
+    show('#result-missing');
+  } else {
+    hide('#result-missing');
+  }
+
+  const host = $('#result-authorities');
+  host.innerHTML = '';
+  for (const r of state.results) host.appendChild(renderAuthority(r));
+
+  if (got.length > 1) {
+    const times = got.map((r) => r.resp.token.tstInfo.genTime.getTime());
+    const spread = Math.max(...times) - Math.min(...times);
+    $('#spread').textContent =
+      `The recorded times span ${spread} milliseconds across ${got.length} authorities. ` +
+      'They are shown exactly as returned and are never averaged or reconciled.';
+    show('#spread-note');
+  } else {
+    hide('#spread-note');
+  }
+
+  $('#btn-download').disabled = false;
+}
+
+function renderAuthority(r) {
+  const el = document.createElement('details');
+  el.className = 'auth';
+  if (!r.ok) el.open = true;
+
+  const counts = { PASS: 0, FAIL: 0, NOT_PERFORMED: 0 };
+  for (const c of r.checks) counts[c.result]++;
+
+  const summary = document.createElement('summary');
+  const t = r.resp?.token?.tstInfo;
+  summary.innerHTML =
+    `<span>${escapeHtml(r.name)}${t ? ` <span class="tally">${escapeHtml(t.genTimeRaw)}</span>` : ''}</span>` +
+    `<span class="tally">${r.ok ? `${counts.PASS} pass / ${counts.FAIL} fail / ${counts.NOT_PERFORMED} not performed` : 'no timestamp'}</span>`;
+  el.appendChild(summary);
+
+  const body = document.createElement('div');
+  body.className = 'body';
+
+  if (!r.ok) {
+    body.innerHTML = `<p class="err">${escapeHtml(r.error ?? r.resp?.statusName ?? 'No token returned.')}</p>
+      <p class="hint">Endpoint: <code>${escapeHtml(r.endpoint)}</code></p>`;
+    el.appendChild(body);
+    return el;
+  }
+
+  const cert = tsp.findSignerCertificate(r.resp.token);
+  body.innerHTML = `
+    <dl class="kv">
+      <dt>Time stamped</dt><dd>${escapeHtml(t.genTimeRaw)}</dd>
+      <dt>Policy</dt><dd>${escapeHtml(t.policy)}</dd>
+      <dt>Serial</dt><dd class="hash">0x${escapeHtml(t.serialHex.toUpperCase())}</dd>
+      <dt>Accuracy</dt><dd>${t.accuracy ? 'stated' : 'ABSENT (optional in RFC 3161)'}</dd>
+      <dt>TSA field</dt><dd>${t.tsaName ? escapeHtml(t.tsaName.value) : 'ABSENT (optional; identity is the certificate)'}</dd>
+      <dt>Certificates</dt><dd>${r.resp.token.certificates.length}</dd>
+      ${cert ? `<dt>Signed by</dt><dd>${escapeHtml(cert.subject)}</dd>
+      <dt>Expires</dt><dd>${cert.notAfter.toISOString().slice(0, 10)}</dd>` : ''}
+    </dl>`;
+
+  const ul = document.createElement('ul');
+  ul.className = 'checks';
+  for (const c of r.checks) {
+    const li = document.createElement('li');
+    const cls = c.result === PASS ? 'pass' : c.result === FAIL ? 'fail' : 'gap';
+    const word = c.result === NOT_PERFORMED ? 'NOT RUN' : c.result;
+    li.innerHTML = `<span class="tag ${cls}">${word}</span>` +
+      `<span>${escapeHtml(c.label)}<span class="check-detail">${escapeHtml(c.detail)}</span></span>`;
+    ul.appendChild(li);
+  }
+  body.appendChild(ul);
+  el.appendChild(body);
+  return el;
+}
+
+/* ------------------------------------------------------------ download ----- */
+
+async function onDownload() {
+  const btn = $('#btn-download');
+  btn.disabled = true;
+  btn.textContent = 'Building the archive...';
+  try {
+    const out = await buildPackage({
+      version: VERSION,
+      toolSha256: null,
+      mode: state.mode,
+      transport: state.transport,
+      transportNote: describeTransport(),
+      document: {
+        name: state.mode === 'file' ? state.file.name : '(not supplied)',
+        size: state.mode === 'file' ? state.file.size : 0,
+        digestHex: state.digestHex,
+        hashMethod: state.hashMethod,
+        crossChecked: state.crossChecked,
+      },
+      documentBlob: state.documentBlob,
+      nonceHex: state.nonceHex,
+      requestBytes: state.requestBytes,
+      results: state.results,
+      localClock: new Date(),
+    });
+    download(out.filename, out.blob);
+    $('#download-name').textContent = out.filename;
+    show('#download-done');
+    btn.textContent = 'Download again';
+  } catch (e) {
+    btn.textContent = 'Download the evidence archive';
+    $('#result-error').textContent = `The archive could not be built: ${e.message}`;
+    show('#result-error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function describeTransport() {
+  if (state.transport === 'offline') {
+    return 'offline. The request was saved to disk and sent by a helper script run by the ' +
+      'operator, using their own network connection. No relay was involved.';
+  }
+  const relayed = state.results.filter((r) => r.via === 'relay').map((r) => r.name);
+  const direct = state.results.filter((r) => r.via === 'direct').map((r) => r.name);
+  const bits = [];
+  if (relayed.length) bits.push(`${relayed.join(', ')} via the relay at ${state.relayBase}`);
+  if (direct.length) bits.push(`${direct.join(', ')} contacted directly from the browser`);
+  return `${bits.join('; ')}. A relay forwards the fingerprint only; it holds no signing key.`;
+}
+
+function download(name, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+/* -------------------------------------------------------------- utils ----- */
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} bytes`;
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  return `${(n / 1024 ** 3).toFixed(2)} GB`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+}
+</script>
+</body>
+</html>

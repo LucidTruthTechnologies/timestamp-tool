@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timestamp a Document</title>
+<meta name="description" content="Prove that a document existed no later than a given moment, using independent timestamp authorities. Your file never leaves your computer.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128336;</text></svg>">
+<style>/*<!--INLINE:styles.css-->*/</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Timestamp a document</h1>
+  <p class="tagline">Get independent, third-party proof that your document existed no later than
+  right now. Your file never leaves this computer.</p>
+</header>
+
+<!-- ============================================ step 1: input -->
+<section id="step-input">
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a file to timestamp">
+    <p class="big">Drop a file here, or click to choose one</p>
+    <p class="small">Any file. A PDF, a photograph, a spreadsheet, a ZIP of a whole folder.</p>
+  </div>
+  <input type="file" id="file-input" class="hidden">
+  <p class="err hidden" id="input-error"></p>
+
+  <p class="hint">Your file is <strong>not uploaded</strong>. It is read inside this page to
+  calculate a fingerprint, and only that fingerprint, 32 bytes, is ever sent anywhere.
+  <button class="link" id="use-hash" type="button">I already have a fingerprint instead</button></p>
+
+  <div class="note">
+    <p><strong>What this does.</strong> It calculates a fingerprint of your file and asks several
+    independent timestamp authorities to sign a statement that they saw that fingerprint at a
+    particular moment. You get back a single ZIP file holding your document, their signed
+    statements, their certificates, and a plain-English record of everything that was done.</p>
+    <p><strong>What it cannot do.</strong> It cannot show who wrote the document, who held it, or
+    whether anything in it is true. It cannot reach backwards: a file stamped today says nothing
+    about last year. And it fixes only the <em>latest</em> moment your document can have existed,
+    never the earliest.</p>
+  </div>
+</section>
+
+<!-- ============================================ hash-only entry -->
+<section id="step-hash-entry" class="hidden">
+  <h2>Use a fingerprint you already have</h2>
+  <p>Use this when the document itself must not leave your control, even to be read by this page.
+  You calculate the fingerprint yourself and paste it here.</p>
+  <pre class="cmd">sha256sum yourfile.pdf         # macOS: shasum -a 256 yourfile.pdf
+                               # Windows: certutil -hashfile yourfile.pdf SHA256</pre>
+  <label for="hash-input">SHA-256 fingerprint (64 hexadecimal characters)</label>
+  <input type="text" id="hash-input" class="mono" spellcheck="false" autocomplete="off"
+         placeholder="be2b985c3ca89124cf0d765d7bd365a81d94f5fceb1fab1060d0bd8295aad56e">
+  <p class="err hidden" id="hash-error"></p>
+  <div class="note warn">
+    <p><strong>Read this before using it.</strong> The archive you get will not contain your
+    document, so on its own it binds to nothing. It becomes meaningful only beside a file that
+    hashes to exactly the value you enter. This tool cannot see what you hashed, and cannot check
+    that you hashed it correctly. <strong>Preserving the document is entirely your job.</strong></p>
+  </div>
+  <div class="actions">
+    <button id="hash-accept" type="button">Use this fingerprint</button>
+    <button id="hash-back" class="secondary" type="button">Back</button>
+  </div>
+</section>
+
+<!-- ============================================ hashing -->
+<section id="step-hashing" class="hidden">
+  <h2>Reading your file</h2>
+  <p class="status"><span id="hashing-name"></span>, <span id="hashing-size"></span></p>
+  <div class="bar"><span id="hash-bar"></span></div>
+  <p class="status" id="hash-status">Starting</p>
+  <p class="hint hidden" id="hashing-note"></p>
+  <p class="hint">This happens entirely on your computer. Nothing is being uploaded.</p>
+</section>
+
+<!-- ============================================ review -->
+<section id="step-review" class="hidden">
+  <h2>Ready to send</h2>
+  <dl class="kv">
+    <dt>What will be stamped</dt><dd id="rev-mode"></dd>
+    <dt>File name</dt><dd id="rev-name"></dd>
+    <dt>Size</dt><dd id="rev-size"></dd>
+    <dt>Fingerprint</dt><dd class="hash" id="rev-hash"></dd>
+    <dt>Request size</dt><dd id="rev-req"></dd>
+  </dl>
+
+  <div class="note warn hidden" id="hash-only-warning">
+    <p><strong>Fingerprint-only mode.</strong> The archive will contain everything except your
+    document. Keep the document safe yourself; without it the archive proves nothing.</p>
+  </div>
+
+  <p>Only the fingerprint above is sent. It cannot be turned back into your document.</p>
+
+  <h3>How should the request be sent?</h3>
+  <div class="actions">
+    <button id="btn-relay" type="button">Send it for me</button>
+    <button id="btn-offline" class="secondary" type="button">I will send it myself</button>
+  </div>
+
+  <div class="note">
+    <p><strong>Send it for me</strong> is the ordinary choice. The fingerprint goes through a small
+    relay to each authority. The relay is necessary because timestamp authorities refuse requests
+    made directly by a web browser. It holds no signing key, so it cannot forge or alter a
+    timestamp; the worst it could do is learn the fingerprint, and if it returned a timestamp for
+    a <em>different</em> fingerprint this page would catch it and say so.</p>
+    <p><strong>I will send it myself</strong> keeps everything on your own network. The page gives
+    you the request file and a small script; you run it, then drag the replies back here. Choose
+    this if even the fingerprint must not pass through anyone else's server.</p>
+  </div>
+
+  <details>
+    <summary class="hint">Use a different relay (for self-hosting)</summary>
+    <label for="relay-url">Relay address</label>
+    <input type="text" id="relay-url" class="mono" spellcheck="false">
+    <p class="hint">The relay is open source and you can run your own. See the project README.</p>
+  </details>
+</section>
+
+<!-- ============================================ submitting -->
+<section id="step-submitting" class="hidden">
+  <h2>Contacting the authorities</h2>
+  <p class="hint">All of them at once, with the same request.</p>
+  <div id="submit-rows"></div>
+</section>
+
+<!-- ============================================ offline -->
+<section id="step-offline" class="hidden">
+  <h2>Send the request yourself</h2>
+  <p><strong>1.</strong> <code>request.tsq</code> has been downloaded. It contains your fingerprint
+  and nothing else.</p>
+  <p><strong>2.</strong> Download the helper for your system and put it in the same folder as
+  <code>request.tsq</code>, then run it.</p>
+  <div class="actions">
+    <button id="dl-sh" class="secondary" type="button">Download stamp.sh (macOS, Linux)</button>
+    <button id="dl-bat" class="secondary" type="button">Download stamp.bat (Windows)</button>
+    <button id="dl-tsq" class="secondary" type="button">Download request.tsq again</button>
+  </div>
+  <p class="hint">On macOS you may need <code>chmod +x stamp.sh</code> first. Your system may warn
+  you about running a downloaded script; the whole script is shown below so you can read every line
+  of it before you do, or simply run the commands yourself.</p>
+
+  <details>
+    <summary class="hint">Show the commands</summary>
+    <pre class="cmd" id="offline-sh"></pre>
+    <pre class="cmd" id="offline-bat"></pre>
+  </details>
+
+  <p><strong>3.</strong> Drag the reply files back here.</p>
+  <div class="drop" id="resp-drop" tabindex="0" role="button" aria-label="Drop the reply files here">
+    <p class="big">Drop the .tsr files here</p>
+    <p class="small">freetsa.tsr, digicert.tsr, sectigo.tsr, sigstore.tsr</p>
+  </div>
+  <input type="file" id="resp-input" multiple class="hidden">
+  <p class="err hidden" id="resp-error"></p>
+</section>
+
+<!-- ============================================ results -->
+<section id="step-results" class="hidden">
+  <h2>Results</h2>
+  <p id="result-headline"></p>
+  <p class="err hidden" id="result-missing"></p>
+  <p class="hint hidden" id="spread-note"><span id="spread"></span></p>
+
+  <div id="result-authorities"></div>
+
+  <div class="note">
+    <p><strong>Why there is no single tick.</strong> Each check is listed separately because they
+    fail separately, and knowing which one failed is the whole point. A timestamp can carry a
+    perfectly valid signature and still have nothing to do with your document. One green tick
+    covering all of these would hide exactly that case.</p>
+    <p><strong>Chain to a trusted root is marked NOT RUN</strong> on every authority, and this is
+    not a fault. A web browser does not let a page read your computer's list of trusted
+    certificate authorities. The archive contains the exact commands to complete that check with
+    standard software, and they should be run before this timestamp is relied on.</p>
+  </div>
+
+  <div class="actions">
+    <button id="btn-download" type="button" disabled>Download the evidence archive</button>
+    <button id="btn-restart" class="secondary" type="button">Start again</button>
+  </div>
+  <p class="err hidden" id="result-error"></p>
+
+  <div class="note hidden" id="download-done">
+    <p><strong>Saved as <span id="download-name"></span>.</strong></p>
+    <p>Keep that ZIP file exactly as it is. Do not open it and re-save it, and do not add anything
+    to it. To work with the document, extract a <strong>copy</strong> and work on the copy, leaving
+    the archive untouched. Keep more than one copy in places that would not be lost together.</p>
+    <p>Open <code>README-FIRST.txt</code> inside it. It tells you the one check to run first.</p>
+  </div>
+</section>
+
+<footer>
+  <p><strong>This tool is not a validated forensic instrument.</strong> It has not been through
+  formal validation. That does not weaken what it produces: the evidence in your archive is a set
+  of tokens signed by independent third parties, checkable with standard software using the
+  commands included in the archive. Verify the tokens, not the tool.</p>
+  <p>Everything happens in your browser. There is no account, no upload, and no record kept of
+  your document or its fingerprint by this page.</p>
+  <p>Version <span id="tool-version"></span> &middot;
+  <a href="https://github.com/LucidTruthTechnologies/timestamp-tool">Source code, including the relay</a> &middot;
+  Lucid Truth Technologies</p>
+</footer>
+
+</div>
+<script type="module">/*<!--INLINE:js-->*/</script>
+</body>
+</html>
